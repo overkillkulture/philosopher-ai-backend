@@ -1061,6 +1061,318 @@ v1Router.get('/metrics', async (req, res) => {
 });
 
 // ================================================
+// V1 API ROUTES - TRINITY COORDINATION
+// ================================================
+
+// Register or update Trinity instance
+v1Router.post('/trinity/instances/register', async (req, res) => {
+    try {
+        const { instance_id, role, computer_name, focus, metadata = {} } = req.body;
+
+        if (!instance_id || !role) {
+            return res.status(400).json({ error: 'instance_id and role required' });
+        }
+
+        // Upsert instance (update if exists, insert if not)
+        const result = await pool.query(
+            `INSERT INTO trinity_instances (instance_id, role, computer_name, focus, last_heartbeat, metadata)
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
+             ON CONFLICT (instance_id)
+             DO UPDATE SET
+                role = $2,
+                computer_name = $3,
+                focus = $4,
+                last_heartbeat = CURRENT_TIMESTAMP,
+                metadata = $5,
+                status = 'active'
+             RETURNING *`,
+            [instance_id, role, computer_name, focus, metadata]
+        );
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Instance registration error:', error);
+        res.status(500).json({ error: 'Failed to register instance' });
+    }
+});
+
+// Heartbeat (keep instance alive)
+v1Router.post('/trinity/instances/:instance_id/heartbeat', async (req, res) => {
+    try {
+        const { instance_id } = req.params;
+        const { status = 'active', focus } = req.body;
+
+        const result = await pool.query(
+            `UPDATE trinity_instances
+             SET last_heartbeat = CURRENT_TIMESTAMP, status = $2, focus = COALESCE($3, focus)
+             WHERE instance_id = $1
+             RETURNING *`,
+            [instance_id, status, focus]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Instance not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Heartbeat error:', error);
+        res.status(500).json({ error: 'Failed to update heartbeat' });
+    }
+});
+
+// Get all active instances
+v1Router.get('/trinity/instances', async (req, res) => {
+    try {
+        const { active_only = 'true' } = req.query;
+
+        let query = 'SELECT * FROM trinity_instances';
+        if (active_only === 'true') {
+            // Consider instances active if heartbeat within last 5 minutes
+            query += ` WHERE last_heartbeat > NOW() - INTERVAL '5 minutes' ORDER BY created_at`;
+        } else {
+            query += ' ORDER BY created_at';
+        }
+
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Instances fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch instances' });
+    }
+});
+
+// Create task
+v1Router.post('/trinity/tasks', async (req, res) => {
+    try {
+        const {
+            task_name,
+            description,
+            role_target,
+            priority = 50,
+            estimated_hours,
+            metadata = {}
+        } = req.body;
+
+        if (!task_name) {
+            return res.status(400).json({ error: 'task_name required' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO trinity_tasks (task_name, description, role_target, priority, estimated_hours, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
+            [task_name, description, role_target, priority, estimated_hours, metadata]
+        );
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Task creation error:', error);
+        res.status(500).json({ error: 'Failed to create task' });
+    }
+});
+
+// Claim task (atomic operation)
+v1Router.post('/trinity/tasks/:task_id/claim', async (req, res) => {
+    try {
+        const { task_id } = req.params;
+        const { instance_id } = req.body;
+
+        if (!instance_id) {
+            return res.status(400).json({ error: 'instance_id required' });
+        }
+
+        // Atomic claim - only succeeds if task is available
+        const result = await pool.query(
+            `UPDATE trinity_tasks
+             SET status = 'claimed',
+                 assigned_to = $2,
+                 claimed_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND status = 'available'
+             RETURNING *`,
+            [task_id, instance_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(409).json({ error: 'Task not available or already claimed' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Task claim error:', error);
+        res.status(500).json({ error: 'Failed to claim task' });
+    }
+});
+
+// Update task status
+v1Router.patch('/trinity/tasks/:task_id', async (req, res) => {
+    try {
+        const { task_id } = req.params;
+        const { status, metadata } = req.body;
+
+        let query = 'UPDATE trinity_tasks SET ';
+        const params = [];
+        let paramCount = 1;
+
+        if (status) {
+            params.push(status);
+            query += `status = $${paramCount++}, `;
+            if (status === 'completed') {
+                query += `completed_at = CURRENT_TIMESTAMP, `;
+            }
+        }
+
+        if (metadata) {
+            params.push(metadata);
+            query += `metadata = $${paramCount++}, `;
+        }
+
+        if (params.length === 0) {
+            return res.status(400).json({ error: 'No updates provided' });
+        }
+
+        // Remove trailing comma and space
+        query = query.slice(0, -2);
+        params.push(task_id);
+        query += ` WHERE id = $${paramCount} RETURNING *`;
+
+        const result = await pool.query(query, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Task update error:', error);
+        res.status(500).json({ error: 'Failed to update task' });
+    }
+});
+
+// Get tasks (with filtering)
+v1Router.get('/trinity/tasks', async (req, res) => {
+    try {
+        const { status, role_target, assigned_to } = req.query;
+
+        let query = 'SELECT * FROM trinity_tasks WHERE 1=1';
+        const params = [];
+        let paramCount = 1;
+
+        if (status) {
+            params.push(status);
+            query += ` AND status = $${paramCount++}`;
+        }
+
+        if (role_target) {
+            params.push(role_target);
+            query += ` AND role_target = $${paramCount++}`;
+        }
+
+        if (assigned_to) {
+            params.push(assigned_to);
+            query += ` AND assigned_to = $${paramCount++}`;
+        }
+
+        query += ' ORDER BY priority DESC, created_at ASC';
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Tasks fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+});
+
+// Set/Get Trinity state (key-value store)
+v1Router.post('/trinity/state', async (req, res) => {
+    try {
+        const { key, value, updated_by } = req.body;
+
+        if (!key || value === undefined) {
+            return res.status(400).json({ error: 'key and value required' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO trinity_state (key, value, updated_by, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+             ON CONFLICT (key)
+             DO UPDATE SET value = $2, updated_by = $3, updated_at = CURRENT_TIMESTAMP
+             RETURNING *`,
+            [key, value, updated_by]
+        );
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('State update error:', error);
+        res.status(500).json({ error: 'Failed to update state' });
+    }
+});
+
+v1Router.get('/trinity/state/:key', async (req, res) => {
+    try {
+        const { key } = req.params;
+
+        const result = await pool.query(
+            'SELECT * FROM trinity_state WHERE key = $1',
+            [key]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'State key not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('State fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch state' });
+    }
+});
+
+v1Router.get('/trinity/state', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM trinity_state ORDER BY key');
+        res.json(result.rows);
+    } catch (error) {
+        console.error('State fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch state' });
+    }
+});
+
+// Trinity coordination status endpoint
+v1Router.get('/trinity/status', async (req, res) => {
+    try {
+        // Get active instances
+        const instancesResult = await pool.query(
+            `SELECT COUNT(*) as total, role, COUNT(*) FILTER (WHERE last_heartbeat > NOW() - INTERVAL '5 minutes') as active_count
+             FROM trinity_instances
+             GROUP BY role`
+        );
+
+        // Get task statistics
+        const tasksResult = await pool.query(
+            `SELECT status, COUNT(*) as count
+             FROM trinity_tasks
+             GROUP BY status`
+        );
+
+        // Get timeline convergence from state
+        const convergenceResult = await pool.query(
+            `SELECT value FROM trinity_state WHERE key = 'timeline_convergence'`
+        );
+
+        res.json({
+            instances: instancesResult.rows,
+            tasks: tasksResult.rows,
+            timeline_convergence: convergenceResult.rows[0]?.value || null,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Trinity status error:', error);
+        res.status(500).json({ error: 'Failed to fetch Trinity status' });
+    }
+});
+
+// ================================================
 // WEEK 3: MOUNT V1 ROUTER + BACKWARD COMPATIBILITY
 // ================================================
 

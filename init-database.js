@@ -220,6 +220,84 @@ async function initializeDatabase(pool) {
             console.log('✅ Knowledge table created successfully!');
         }
 
+        // Separately check and create Trinity tables (for multi-instance coordination)
+        const trinityInstancesCheck = await client.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'trinity_instances'
+            );
+        `);
+
+        if (!trinityInstancesCheck.rows[0].exists) {
+            console.log('📋 Creating Trinity coordination tables (migration)...');
+            await client.query('BEGIN');
+
+            // Trinity instances table (tracks active AI instances)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS trinity_instances (
+                    id SERIAL PRIMARY KEY,
+                    instance_id VARCHAR(255) UNIQUE NOT NULL,
+                    role VARCHAR(50) NOT NULL,
+                    computer_name VARCHAR(255),
+                    status VARCHAR(50) DEFAULT 'active',
+                    focus TEXT,
+                    last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata JSONB DEFAULT '{}'
+                )
+            `);
+
+            // Trinity tasks table (task claiming and coordination)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS trinity_tasks (
+                    id SERIAL PRIMARY KEY,
+                    task_name VARCHAR(500) NOT NULL,
+                    description TEXT,
+                    assigned_to VARCHAR(255),
+                    role_target VARCHAR(50),
+                    status VARCHAR(50) DEFAULT 'available',
+                    priority INTEGER DEFAULT 50,
+                    estimated_hours INTEGER,
+                    claimed_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    metadata JSONB DEFAULT '{}'
+                )
+            `);
+
+            // Trinity state table (shared state/status)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS trinity_state (
+                    id SERIAL PRIMARY KEY,
+                    key VARCHAR(255) UNIQUE NOT NULL,
+                    value JSONB NOT NULL,
+                    updated_by VARCHAR(255),
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Create indexes
+            await client.query('CREATE INDEX IF NOT EXISTS idx_trinity_instances_role ON trinity_instances(role)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_trinity_instances_status ON trinity_instances(status)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_trinity_tasks_status ON trinity_tasks(status)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_trinity_tasks_assigned ON trinity_tasks(assigned_to)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_trinity_state_key ON trinity_state(key)');
+
+            // Add triggers
+            await client.query(`
+                DROP TRIGGER IF EXISTS update_trinity_tasks_updated_at ON trinity_tasks;
+                CREATE TRIGGER update_trinity_tasks_updated_at
+                    BEFORE UPDATE ON trinity_tasks
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_updated_at_column()
+            `);
+
+            await client.query('COMMIT');
+            console.log('✅ Trinity coordination tables created successfully!');
+        }
+
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('❌ Database initialization failed:', error.message);
