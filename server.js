@@ -7,6 +7,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -20,6 +21,7 @@ const { v4: uuidv4 } = require('uuid');
 const validator = require('validator');
 const { detectManipulationPatterns } = require('./manipulationDetector');
 const { initializeDatabase } = require('./init-database');
+const { TrinityWebSocketServer } = require('./websocket-server');
 
 // ================================================
 // CONFIGURATION
@@ -27,6 +29,9 @@ const { initializeDatabase } = require('./init-database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for both Express and WebSocket
+const httpServer = http.createServer(app);
 
 // Database connection
 const pool = new Pool({
@@ -1089,6 +1094,18 @@ v1Router.post('/trinity/instances/register', async (req, res) => {
             [instance_id, role, computer_name, focus, metadata]
         );
 
+        // Broadcast instance registration via WebSocket
+        const wsServer = req.app.get('wsServer');
+        if (wsServer) {
+            wsServer.broadcastInstanceUpdate({
+                instance_id,
+                role,
+                computer_name,
+                status: 'active',
+                focus
+            });
+        }
+
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Instance registration error:', error);
@@ -1197,7 +1214,18 @@ v1Router.post('/trinity/tasks/:task_id/claim', async (req, res) => {
             return res.status(409).json({ error: 'Task not available or already claimed' });
         }
 
-        res.json(result.rows[0]);
+        // Broadcast task claim via WebSocket
+        const task = result.rows[0];
+        const wsServer = req.app.get('wsServer');
+        if (wsServer) {
+            wsServer.broadcastTaskClaimed({
+                task_id: task.id,
+                task_name: task.task_name,
+                instance_id: instance_id
+            });
+        }
+
+        res.json(task);
     } catch (error) {
         console.error('Task claim error:', error);
         res.status(500).json({ error: 'Failed to claim task' });
@@ -1242,7 +1270,18 @@ v1Router.patch('/trinity/tasks/:task_id', async (req, res) => {
             return res.status(404).json({ error: 'Task not found' });
         }
 
-        res.json(result.rows[0]);
+        // Broadcast task updates via WebSocket
+        const task = result.rows[0];
+        const wsServer = req.app.get('wsServer');
+        if (wsServer) {
+            wsServer.broadcastTaskUpdated({
+                task_id: task.id,
+                status: task.status,
+                task_name: task.task_name
+            });
+        }
+
+        res.json(task);
     } catch (error) {
         console.error('Task update error:', error);
         res.status(500).json({ error: 'Failed to update task' });
@@ -1300,6 +1339,15 @@ v1Router.post('/trinity/state', async (req, res) => {
              RETURNING *`,
             [key, value, updated_by]
         );
+
+        // Broadcast timeline convergence updates via WebSocket
+        const wsServer = req.app.get('wsServer');
+        if (wsServer && key === 'timeline_convergence') {
+            wsServer.broadcastConvergenceUpdate({
+                percent: value.percent || value,
+                updated_by
+            });
+        }
 
         res.json(result.rows[0]);
     } catch (error) {
@@ -1416,15 +1464,23 @@ async function startServer() {
         // Initialize database schema
         await initializeDatabase(pool);
 
+        // Initialize WebSocket server for real-time Trinity coordination
+        const wsServer = new TrinityWebSocketServer(httpServer);
+
+        // Make WebSocket server available to all routes
+        app.set('wsServer', wsServer);
+
         // Start server
-        app.listen(PORT, () => {
+        httpServer.listen(PORT, () => {
             console.log('================================================');
             console.log('🌀 PHILOSOPHER AI BACKEND - READY');
+            console.log('🌐 TRINITY WEBSOCKET SERVER - ACTIVE');
             console.log('================================================');
             console.log(`Server running on port ${PORT}`);
             console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
             console.log(`API URL: ${process.env.API_URL || `http://localhost:${PORT}`}`);
             console.log(`Version: ${process.env.PLATFORM_VERSION || '1.0.0'}`);
+            console.log(`WebSocket: Real-time coordination enabled`);
             console.log('================================================');
         });
     } catch (error) {
