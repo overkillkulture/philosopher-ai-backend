@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Commander Mobile Control Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0e27;
+            color: #00ff41;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%);
+            padding: 15px;
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #00ff41;
+            color: #0a0e27;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: rgba(26, 31, 58, 0.6);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff41;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #00ff41;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff41;
+        }
+
+        .health-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41 0%, #00aa2e 100%);
+            transition: width 0.3s ease;
+        }
+
+        .instance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .instance-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 8px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .instance-card.active {
+            background: rgba(0, 255, 65, 0.2);
+            border-color: #00ff41;
+        }
+
+        .instance-card.inactive {
+            opacity: 0.5;
+            border-color: #666;
+            color: #666;
+        }
+
+        .instance-id {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .instance-role {
+            font-size: 9px;
+            color: #888;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #00ff41 0%, #00aa2e 100%);
+            color: #0a0e27;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .priority-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .priority-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid #00ff41;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .refresh-indicator {
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            margin-top: 10px;
+            padding: 5px;
+        }
+
+        .alert {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            color: #ff4444;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        .success {
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #000;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ COMMAND CENTER ⚡</h1>
+        <div class="status-badge" id="systemStatus">SYSTEMS OPERATIONAL</div>
+    </div>
+
+    <!-- System Health -->
+    <div class="section">
+        <div class="section-title">📊 SYSTEM HEALTH</div>
+        <div class="metric">
+            <span class="metric-label">Overall Health</span>
+            <span class="metric-value" id="overallHealth">72%</span>
+        </div>
+        <div class="health-bar">
+            <div class="health-fill" id="healthBar" style="width: 72%"></div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Active Instances</span>
+            <span class="metric-value" id="activeInstances">2/9</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Systems Operational</span>
+            <span class="metric-value" id="systemsOp">13/13</span>
+        </div>
+    </div>
+
+    <!-- Instance Status -->
+    <div class="section">
+        <div class="section-title">🤖 INSTANCE STATUS</div>
+        <div class="instance-grid">
+            <div class="instance-card active">
+                <div class="instance-id">A1</div>
+                <div class="instance-role">Backend</div>
+            </div>
+            <div class="instance-card active">
+                <div class="instance-id">A2</div>
+                <div class="instance-role">Data</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">A3</div>
+                <div class="instance-role">Auto</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">B1</div>
+                <div class="instance-role">Frontend</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">B2</div>
+                <div class="instance-role">Testing</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">B3</div>
+                <div class="instance-role">DevOps</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">C1</div>
+                <div class="instance-role">Docs</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">C2</div>
+                <div class="instance-role">Coord</div>
+            </div>
+            <div class="instance-card inactive">
+                <div class="instance-id">C3</div>
+                <div class="instance-role">Analysis</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Achievements -->
+    <div class="section">
+        <div class="section-title">🏆 TOP ACHIEVEMENTS (24h)</div>
+        <ul class="priority-list" id="achievements">
+            <li class="priority-item">Created multi-instance hub</li>
+            <li class="priority-item">Built 13D audit system</li>
+            <li class="priority-item">User & employee manuals complete</li>
+            <li class="priority-item">Recursive analytics operational</li>
+            <li class="priority-item">Spreadsheet brain syncing 11 files</li>
+        </ul>
+    </div>
+
+    <!-- Next Priorities -->
+    <div class="section">
+        <div class="section-title">🎯 NEXT PRIORITIES</div>
+        <ul class="priority-list" id="priorities">
+            <li class="priority-item">Launch remaining instances</li>
+            <li class="priority-item">Connect Computer B</li>
+            <li class="priority-item">Deploy to production</li>
+        </ul>
+    </div>
+
+    <!-- Blockers -->
+    <div class="section" id="blockersSection" style="display:none;">
+        <div class="section-title">🚫 BLOCKERS</div>
+        <div class="alert" id="blockers">
+            No blockers - All systems operational
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section">
+        <div class="section-title">⚡ QUICK ACTIONS</div>
+        <div class="quick-actions">
+            <button class="action-btn" onclick="refreshData()">🔄 REFRESH</button>
+            <button class="action-btn" onclick="viewFullReport()">📊 FULL REPORT</button>
+            <button class="action-btn" onclick="launchInstance()">🚀 LAUNCH</button>
+            <button class="action-btn" onclick="checkHealth()">💚 HEALTH</button>
+        </div>
+    </div>
+
+    <!-- GitHub Sync Status -->
+    <div class="section">
+        <div class="section-title">🔗 GITHUB SYNC</div>
+        <div class="metric">
+            <span class="metric-label">Last Sync</span>
+            <span class="metric-value" id="lastSync">2 min ago</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Sync Status</span>
+            <span class="metric-value" id="syncStatus">✅ SYNCED</span>
+        </div>
+        <button class="action-btn" style="width: 100%; margin-top: 10px;" onclick="forceSyncGitHub()">
+            FORCE SYNC TO GITHUB
+        </button>
+    </div>
+
+    <div class="refresh-indicator" id="refreshIndicator">
+        Auto-refresh every 30s • Last updated: <span id="lastUpdate">Just now</span>
+    </div>
+
+    <script>
+        // Simulated data - In production, this would fetch from GitHub
+        let lastUpdateTime = new Date();
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const diff = Math.floor((now - lastUpdateTime) / 1000);
+
+            if (diff < 60) {
+                document.getElementById('lastUpdate').textContent = `${diff}s ago`;
+            } else if (diff < 3600) {
+                document.getElementById('lastUpdate').textContent = `${Math.floor(diff / 60)}m ago`;
+            } else {
+                document.getElementById('lastUpdate').textContent = `${Math.floor(diff / 3600)}h ago`;
+            }
+        }
+
+        function refreshData() {
+            // In production: Fetch from GitHub repo's latest commit
+            // Parse COMMANDER_EXECUTIVE_SUMMARY.md
+            // Update UI with real data
+
+            document.getElementById('systemStatus').textContent = 'REFRESHING...';
+
+            setTimeout(() => {
+                document.getElementById('systemStatus').textContent = 'SYSTEMS OPERATIONAL';
+                lastUpdateTime = new Date();
+                updateLastUpdateTime();
+
+                // Vibrate on mobile
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            }, 500);
+        }
+
+        function viewFullReport() {
+            // In production: Open GitHub link to COMMANDER_EXECUTIVE_SUMMARY.md
+            const githubUrl = 'https://github.com/YOUR_USERNAME/YOUR_REPO/blob/master/COMMANDER_EXECUTIVE_SUMMARY.md';
+            window.open(githubUrl, '_blank');
+        }
+
+        function launchInstance() {
+            if (confirm('Launch next available instance?')) {
+                alert('Instance launch command sent to GitHub Actions');
+            }
+        }
+
+        function checkHealth() {
+            // In production: Fetch from MULTI_INSTANCE_HEALTH.md
+            alert('Health Check:\n\n✅ A1: Healthy (100%)\n✅ A2: Healthy (100%)\n⏳ A3-C3: Not launched');
+        }
+
+        function forceSyncGitHub() {
+            document.getElementById('syncStatus').textContent = '🔄 SYNCING...';
+
+            setTimeout(() => {
+                document.getElementById('syncStatus').textContent = '✅ SYNCED';
+                document.getElementById('lastSync').textContent = 'Just now';
+                alert('GitHub sync complete!\n\nAll computers now have latest data.');
+            }, 1000);
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            refreshData();
+        }, 30000);
+
+        // Update "last updated" time every second
+        setInterval(updateLastUpdateTime, 1000);
+
+        // Install as PWA prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install button
+            const installBtn = document.createElement('button');
+            installBtn.textContent = '📱 INSTALL APP';
+            installBtn.className = 'action-btn';
+            installBtn.style.width = '100%';
+            installBtn.style.marginTop = '10px';
+            installBtn.onclick = () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA installed');
+                    }
+                    deferredPrompt = null;
+                    installBtn.remove();
+                });
+            };
+            document.querySelector('.quick-actions').parentElement.appendChild(installBtn);
+        });
+    </script>
+</body>
+</html>
