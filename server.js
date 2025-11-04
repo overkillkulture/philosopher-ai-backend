@@ -899,6 +899,168 @@ v1Router.get('/subscriptions/current', authenticateToken, async (req, res) => {
 });
 
 // ================================================
+// V1 API ROUTES - DATA CYCLOTRON INTEGRATION
+// ================================================
+
+// Create knowledge item
+v1Router.post('/knowledge', async (req, res) => {
+    try {
+        const {
+            title,
+            content,
+            source = 'cyclotron',
+            source_url = null,
+            categories = [],
+            keywords = [],
+            priority_score = 50,
+            metadata = {}
+        } = req.body;
+
+        // Validation
+        if (!title || !content) {
+            return res.status(400).json({ error: 'Title and content required' });
+        }
+
+        // Insert knowledge
+        const result = await pool.query(
+            `INSERT INTO knowledge (
+                title, content, source, source_url, categories, keywords, priority_score, metadata
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *`,
+            [title, content, source, source_url, categories, keywords, priority_score, metadata]
+        );
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Knowledge creation error:', error);
+        res.status(500).json({ error: 'Failed to create knowledge item' });
+    }
+});
+
+// Search knowledge with natural language
+v1Router.get('/knowledge/search', async (req, res) => {
+    try {
+        const { q, limit = 10 } = req.query;
+
+        if (!q) {
+            return res.status(400).json({ error: 'Search query required' });
+        }
+
+        // Full-text search across title, content, keywords, and categories
+        const result = await pool.query(
+            `SELECT *,
+             ts_rank(
+                 to_tsvector('english', title || ' ' || content),
+                 plainto_tsquery('english', $1)
+             ) as rank
+             FROM knowledge
+             WHERE
+                 to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', $1)
+                 OR $1 = ANY(keywords)
+                 OR $1 = ANY(categories)
+             ORDER BY rank DESC, created_at DESC
+             LIMIT $2`,
+            [q, parseInt(limit)]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Knowledge search error:', error);
+        res.status(500).json({ error: 'Search failed' });
+    }
+});
+
+// Get knowledge by category
+v1Router.get('/knowledge/category/:category', async (req, res) => {
+    try {
+        const { category } = req.params;
+        const { limit = 20 } = req.query;
+
+        const result = await pool.query(
+            `SELECT * FROM knowledge
+             WHERE $1 = ANY(categories)
+             ORDER BY priority_score DESC, created_at DESC
+             LIMIT $2`,
+            [category, parseInt(limit)]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Category fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch category' });
+    }
+});
+
+// Get recent knowledge items
+v1Router.get('/knowledge/recent', async (req, res) => {
+    try {
+        const { limit = 20 } = req.query;
+
+        const result = await pool.query(
+            `SELECT * FROM knowledge
+             ORDER BY created_at DESC
+             LIMIT $1`,
+            [parseInt(limit)]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Recent fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch recent items' });
+    }
+});
+
+// Get Data Cyclotron metrics
+v1Router.get('/metrics', async (req, res) => {
+    try {
+        // Get overall statistics
+        const statsResult = await pool.query(`
+            SELECT
+                COUNT(*) as total_knowledge,
+                COUNT(DISTINCT source) as total_sources,
+                AVG(priority_score) as avg_priority,
+                MAX(created_at) as last_added
+            FROM knowledge
+        `);
+
+        // Get category breakdown
+        const categoriesResult = await pool.query(`
+            SELECT category, COUNT(*) as count
+            FROM knowledge,
+            LATERAL unnest(categories) as category
+            GROUP BY category
+            ORDER BY count DESC
+            LIMIT 10
+        `);
+
+        // Get source breakdown
+        const sourcesResult = await pool.query(`
+            SELECT source, COUNT(*) as count
+            FROM knowledge
+            GROUP BY source
+            ORDER BY count DESC
+        `);
+
+        // Get recent activity (last 24 hours)
+        const recentResult = await pool.query(`
+            SELECT COUNT(*) as count_24h
+            FROM knowledge
+            WHERE created_at > NOW() - INTERVAL '24 hours'
+        `);
+
+        res.json({
+            statistics: statsResult.rows[0],
+            top_categories: categoriesResult.rows,
+            sources: sourcesResult.rows,
+            recent_activity: recentResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Metrics fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch metrics' });
+    }
+});
+
+// ================================================
 // WEEK 3: MOUNT V1 ROUTER + BACKWARD COMPATIBILITY
 // ================================================
 

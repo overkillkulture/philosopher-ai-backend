@@ -98,6 +98,23 @@ async function initializeDatabase(pool) {
                 )
             `);
 
+            // Create knowledge table (Data Cyclotron)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS knowledge (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(500) NOT NULL,
+                    content TEXT NOT NULL,
+                    source VARCHAR(255) DEFAULT 'cyclotron',
+                    source_url TEXT,
+                    categories TEXT[],
+                    keywords TEXT[],
+                    priority_score INTEGER DEFAULT 50,
+                    metadata JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Create indexes
             await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
@@ -105,6 +122,11 @@ async function initializeDatabase(pool) {
             await client.query('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_source ON knowledge(source)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_created_at ON knowledge(created_at)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_priority ON knowledge(priority_score)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_categories ON knowledge USING GIN(categories)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_keywords ON knowledge USING GIN(keywords)');
 
             // Create trigger function
             await client.query(`
@@ -130,6 +152,14 @@ async function initializeDatabase(pool) {
                 DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
                 CREATE TRIGGER update_conversations_updated_at
                     BEFORE UPDATE ON conversations
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_updated_at_column()
+            `);
+
+            await client.query(`
+                DROP TRIGGER IF EXISTS update_knowledge_updated_at ON knowledge;
+                CREATE TRIGGER update_knowledge_updated_at
+                    BEFORE UPDATE ON knowledge
                     FOR EACH ROW
                     EXECUTE FUNCTION update_updated_at_column()
             `);
