@@ -22,7 +22,7 @@ async function initializeDatabase(pool) {
             console.log('📋 Creating database schema...');
             await client.query('BEGIN');
 
-            // Create users table
+            // Create users table (with C1 Production Enhancement fields)
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -36,16 +36,31 @@ async function initializeDatabase(pool) {
                     subscription_tier VARCHAR(50) DEFAULT 'free',
                     anthropic_api_key VARCHAR(255),
                     manipulation_immunity_score FLOAT DEFAULT 0,
+                    consciousness_level INTEGER DEFAULT 0,
+                    questions_used_this_month INTEGER DEFAULT 0,
+                    questions_limit INTEGER DEFAULT 3,
+                    reset_date DATE DEFAULT CURRENT_DATE,
+                    stripe_customer_id VARCHAR(255),
+                    stripe_subscription_id VARCHAR(255),
                     is_active BOOLEAN DEFAULT true,
+                    is_admin BOOLEAN DEFAULT false,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
                     failed_attempts INTEGER DEFAULT 0,
                     locked_until TIMESTAMP,
-                    email_verified BOOLEAN DEFAULT false,
+                    email_verified BOOLEAN DEFAULT true,
                     verification_token VARCHAR(255),
                     reset_token VARCHAR(255),
-                    reset_token_expires TIMESTAMP
+                    reset_token_expires TIMESTAMP,
+                    reset_token_hash VARCHAR(255),
+                    reset_token_expiry TIMESTAMP,
+                    email_verification_token_hash VARCHAR(255),
+                    email_verification_token_expiry TIMESTAMP,
+                    display_name VARCHAR(100),
+                    avatar_url VARCHAR(500),
+                    bio TEXT,
+                    preferences JSONB DEFAULT '{}'
                 )
             `);
 
@@ -102,6 +117,52 @@ async function initializeDatabase(pool) {
                 )
             `);
 
+            // Create questions table (for C3 Oracle AI questions)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS questions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    question_category VARCHAR(100),
+                    consciousness_boost INTEGER DEFAULT 0,
+                    conversation_id VARCHAR(255),
+                    response_time_ms INTEGER,
+                    tokens_used INTEGER,
+                    model_used VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Create subscriptions table (for Stripe subscriptions)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    tier VARCHAR(50) NOT NULL,
+                    stripe_subscription_id VARCHAR(255) UNIQUE,
+                    stripe_customer_id VARCHAR(255),
+                    stripe_price_id VARCHAR(255),
+                    amount_cents INTEGER,
+                    status VARCHAR(50) NOT NULL,
+                    current_period_start TIMESTAMP,
+                    current_period_end TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Create usage_logs table (for analytics and event tracking)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS usage_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    event_type VARCHAR(100) NOT NULL,
+                    event_data JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Create knowledge table (Data Cyclotron)
             await client.query(`
                 CREATE TABLE IF NOT EXISTS knowledge (
@@ -121,11 +182,19 @@ async function initializeDatabase(pool) {
 
             // Create indexes
             await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin) WHERE is_admin = true');
             await client.query('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_questions_user_id ON questions(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_questions_created_at ON questions(created_at)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON usage_logs(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_usage_logs_event_type ON usage_logs(event_type)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_source ON knowledge(source)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_created_at ON knowledge(created_at)');
             await client.query('CREATE INDEX IF NOT EXISTS idx_knowledge_priority ON knowledge(priority_score)');
@@ -166,6 +235,43 @@ async function initializeDatabase(pool) {
                     BEFORE UPDATE ON knowledge
                     FOR EACH ROW
                     EXECUTE FUNCTION update_updated_at_column()
+            `);
+
+            // Create helper functions for question limits
+            await client.query(`
+                CREATE OR REPLACE FUNCTION can_user_ask_question(p_user_id INTEGER)
+                RETURNS BOOLEAN AS $$
+                DECLARE
+                    v_tier VARCHAR(50);
+                    v_questions_used INTEGER;
+                    v_questions_limit INTEGER;
+                BEGIN
+                    SELECT tier, questions_used_this_month, questions_limit
+                    INTO v_tier, v_questions_used, v_questions_limit
+                    FROM users WHERE id = p_user_id;
+
+                    -- Free tier users have limits
+                    IF v_tier = 'free' THEN
+                        RETURN v_questions_used < v_questions_limit;
+                    ELSE
+                        -- Paid tiers have unlimited questions
+                        RETURN true;
+                    END IF;
+                END;
+                $$ LANGUAGE plpgsql;
+            `);
+
+            await client.query(`
+                CREATE OR REPLACE FUNCTION reset_monthly_questions()
+                RETURNS void AS $$
+                BEGIN
+                    -- Reset question counts on the first of each month
+                    UPDATE users
+                    SET questions_used_this_month = 0,
+                        reset_date = CURRENT_DATE
+                    WHERE reset_date < DATE_TRUNC('month', CURRENT_DATE);
+                END;
+                $$ LANGUAGE plpgsql;
             `);
 
             await client.query('COMMIT');
