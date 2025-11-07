@@ -278,6 +278,65 @@ async function initializeDatabase(pool) {
             console.log('✅ Database schema created successfully!');
         } else {
             console.log('✅ Database schema already exists');
+
+            // Check and add missing columns to existing users table
+            console.log('🔧 Checking for missing columns in users table...');
+            const existingColumns = await client.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'users'
+            `);
+
+            const columnNames = existingColumns.rows.map(r => r.column_name);
+            const missingColumns = [];
+
+            // Check for C1 production columns
+            const requiredColumns = {
+                'consciousness_level': 'INTEGER DEFAULT 0',
+                'questions_used_this_month': 'INTEGER DEFAULT 0',
+                'questions_limit': 'INTEGER DEFAULT 3',
+                'reset_date': 'DATE DEFAULT CURRENT_DATE',
+                'stripe_customer_id': 'VARCHAR(255)',
+                'stripe_subscription_id': 'VARCHAR(255)',
+                'is_admin': 'BOOLEAN DEFAULT false',
+                'reset_token_hash': 'VARCHAR(255)',
+                'reset_token_expiry': 'TIMESTAMP',
+                'email_verification_token_hash': 'VARCHAR(255)',
+                'email_verification_token_expiry': 'TIMESTAMP',
+                'display_name': 'VARCHAR(100)',
+                'avatar_url': 'VARCHAR(500)',
+                'bio': 'TEXT',
+                'preferences': 'JSONB DEFAULT \'{}\''
+            };
+
+            for (const [colName, colType] of Object.entries(requiredColumns)) {
+                if (!columnNames.includes(colName)) {
+                    missingColumns.push({name: colName, type: colType});
+                }
+            }
+
+            if (missingColumns.length > 0) {
+                console.log(`📋 Adding ${missingColumns.length} missing columns...`);
+                await client.query('BEGIN');
+
+                for (const col of missingColumns) {
+                    try {
+                        await client.query(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+                        console.log(`  ✓ Added ${col.name}`);
+                    } catch (err) {
+                        console.log(`  ⚠ ${col.name}: ${err.message.substring(0, 50)}`);
+                    }
+                }
+
+                // Add indexes
+                await client.query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
+                await client.query('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin) WHERE is_admin = true');
+
+                await client.query('COMMIT');
+                console.log('✅ Missing columns added successfully!');
+            } else {
+                console.log('✅ All required columns present');
+            }
         }
 
         // Separately check and create knowledge table (for migrations)
