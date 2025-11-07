@@ -23,6 +23,10 @@ const { detectManipulationPatterns } = require('./manipulationDetector');
 const { initializeDatabase } = require('./init-database');
 const { TrinityWebSocketServer } = require('./websocket-server');
 
+// C1 Mechanic - Production Enhancement Routes
+const logger = require('./utils/logger');
+const { requestLogger, errorLogger } = require('./middleware/logging');
+
 // ================================================
 // CONFIGURATION
 // ================================================
@@ -89,7 +93,10 @@ const questionLimiter = rateLimit({
     message: 'Too many questions, please slow down.'
 });
 
-// Logging middleware
+// C1 Mechanic - Enhanced logging with Winston
+app.use(requestLogger);
+
+// Legacy console logging (keeping for compatibility)
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
@@ -417,6 +424,18 @@ v1Router.get('/auth/me', authenticateToken, (req, res) => {
 // Navigation routes
 const navigationRoutes = require('./routes/navigation');
 v1Router.use('/nav', navigationRoutes);
+
+// C1 Mechanic - Production Enhancement Routes
+const authExtendedRoutes = require('./routes/auth-extended');
+const profileRoutes = require('./routes/profile');
+const adminRoutes = require('./routes/admin');
+const analyticsRoutes = require('./routes/analytics');
+
+// Mount new routes
+v1Router.use('/auth', authExtendedRoutes); // Password reset, email verification, change password
+v1Router.use('/profile', authenticateToken, profileRoutes); // User profile management (requires auth)
+v1Router.use('/admin', authenticateToken, adminRoutes); // Admin dashboard (requires auth + admin check inside)
+v1Router.use('/analytics', analyticsRoutes); // Analytics (some public, some require auth)
 
 // ================================================
 // V1 API ROUTES - WORKSPACE (AI Chat)
@@ -1442,17 +1461,12 @@ app.use('/api', (req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
+    logger.warn('404 - Route not found', { path: req.path, method: req.method });
     res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
+// C1 Mechanic - Error logging middleware
+app.use(errorLogger);
 
 // ================================================
 // SERVER STARTUP
