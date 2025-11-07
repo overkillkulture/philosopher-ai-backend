@@ -365,27 +365,55 @@ async function initializeDatabase(pool) {
                 console.log('✅ All required columns present');
             }
 
-            // Fix legacy password column (make nullable if exists)
-            console.log('🔧 Checking for legacy password column...');
-            try {
-                const passwordColCheck = await client.query(`
-                    SELECT is_nullable
-                    FROM information_schema.columns
-                    WHERE table_name = 'users'
-                    AND column_name = 'password'
-                `);
+            // Fix legacy columns (make nullable if they exist with NOT NULL)
+            console.log('🔧 Normalizing legacy database columns...');
+            const legacyColumnsToNullable = ['password', 'name', 'phone', 'address'];
 
-                if (passwordColCheck.rows.length > 0 && passwordColCheck.rows[0].is_nullable === 'NO') {
-                    await client.query('ALTER TABLE users ALTER COLUMN password DROP NOT NULL');
-                    console.log('  ✓ Removed NOT NULL constraint from legacy password column');
-                } else if (passwordColCheck.rows.length > 0) {
-                    console.log('  ✓ Legacy password column already nullable');
-                } else {
-                    console.log('  ✓ No legacy password column found (good!)');
+            for (const colName of legacyColumnsToNullable) {
+                try {
+                    const colCheck = await client.query(`
+                        SELECT is_nullable
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                        AND column_name = $1
+                    `, [colName]);
+
+                    if (colCheck.rows.length > 0 && colCheck.rows[0].is_nullable === 'NO') {
+                        await client.query(`ALTER TABLE users ALTER COLUMN ${colName} DROP NOT NULL`);
+                        console.log(`  ✓ Made '${colName}' nullable`);
+                    }
+                } catch (err) {
+                    // Column doesn't exist or already nullable - OK
                 }
-            } catch (err) {
-                console.log(`  ⚠ Password column check: ${err.message.substring(0, 50)}`);
             }
+
+            // Add any missing base columns that code expects
+            console.log('🔧 Adding missing base columns...');
+            const baseColumnsNeeded = {
+                'is_active': 'BOOLEAN DEFAULT true',
+                'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            };
+
+            for (const [colName, colDef] of Object.entries(baseColumnsNeeded)) {
+                try {
+                    const exists = await client.query(`
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                        AND column_name = $1
+                    `, [colName]);
+
+                    if (exists.rows.length === 0) {
+                        await client.query(`ALTER TABLE users ADD COLUMN ${colName} ${colDef}`);
+                        console.log(`  ✓ Added '${colName}'`);
+                    }
+                } catch (err) {
+                    console.log(`  ⚠ ${colName}: ${err.message.substring(0, 40)}`);
+                }
+            }
+
+            console.log('✅ Schema normalization complete');
         }
 
         // Separately check and create knowledge table (for migrations)
