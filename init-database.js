@@ -544,6 +544,92 @@ async function initializeDatabase(pool) {
             console.log('✅ Trinity coordination tables created successfully!');
         }
 
+        // Create usage_logs table if missing
+        const usageLogsCheck = await client.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'usage_logs'
+            );
+        `);
+
+        if (!usageLogsCheck.rows[0].exists) {
+            console.log('📋 Creating usage_logs table...');
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS usage_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    event_type VARCHAR(100) NOT NULL,
+                    event_data JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query('CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON usage_logs(user_id)');
+            await client.query('CREATE INDEX IF NOT EXISTS idx_usage_logs_event_type ON usage_logs(event_type)');
+            console.log('  ✓ usage_logs table created');
+        }
+
+        // Create questions table if missing
+        const questionsCheck = await client.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'questions'
+            );
+        `);
+
+        if (!questionsCheck.rows[0].exists) {
+            console.log('📋 Creating questions table...');
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS questions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    question_category VARCHAR(100),
+                    consciousness_boost INTEGER DEFAULT 0,
+                    conversation_id VARCHAR(255),
+                    response_time_ms INTEGER,
+                    tokens_used INTEGER,
+                    model_used VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('  ✓ questions table created');
+        }
+
+        // Create subscriptions table if missing
+        const subscriptionsCheck = await client.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'subscriptions'
+            );
+        `);
+
+        if (!subscriptionsCheck.rows[0].exists) {
+            console.log('📋 Creating subscriptions table...');
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    tier VARCHAR(50) NOT NULL,
+                    stripe_subscription_id VARCHAR(255) UNIQUE,
+                    stripe_customer_id VARCHAR(255),
+                    stripe_price_id VARCHAR(255),
+                    amount_cents INTEGER,
+                    status VARCHAR(50) NOT NULL,
+                    current_period_start TIMESTAMP,
+                    current_period_end TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('  ✓ subscriptions table created');
+        }
+
+        console.log('✅ All tables verified and created');
+
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('❌ Database initialization failed:', error.message);
