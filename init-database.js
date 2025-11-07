@@ -328,9 +328,18 @@ async function initializeDatabase(pool) {
                     }
                 }
 
-                // Add indexes
-                await client.query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
-                await client.query('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin) WHERE is_admin = true');
+                // Add indexes (only if columns exist)
+                try {
+                    await client.query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
+                } catch (err) {
+                    console.log('  ⚠ username index skipped (column may not exist)');
+                }
+
+                try {
+                    await client.query('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin) WHERE is_admin = true');
+                } catch (err) {
+                    console.log('  ⚠ is_admin index skipped (column may not exist yet)');
+                }
 
                 await client.query('COMMIT');
                 console.log('✅ Missing columns added successfully!');
