@@ -364,6 +364,28 @@ async function initializeDatabase(pool) {
             } else {
                 console.log('✅ All required columns present');
             }
+
+            // Fix legacy password column (make nullable if exists)
+            console.log('🔧 Checking for legacy password column...');
+            try {
+                const passwordColCheck = await client.query(`
+                    SELECT is_nullable
+                    FROM information_schema.columns
+                    WHERE table_name = 'users'
+                    AND column_name = 'password'
+                `);
+
+                if (passwordColCheck.rows.length > 0 && passwordColCheck.rows[0].is_nullable === 'NO') {
+                    await client.query('ALTER TABLE users ALTER COLUMN password DROP NOT NULL');
+                    console.log('  ✓ Removed NOT NULL constraint from legacy password column');
+                } else if (passwordColCheck.rows.length > 0) {
+                    console.log('  ✓ Legacy password column already nullable');
+                } else {
+                    console.log('  ✓ No legacy password column found (good!)');
+                }
+            } catch (err) {
+                console.log(`  ⚠ Password column check: ${err.message.substring(0, 50)}`);
+            }
         }
 
         // Separately check and create knowledge table (for migrations)
