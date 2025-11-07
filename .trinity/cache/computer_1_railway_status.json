@@ -6,6 +6,10 @@
   "status": "ONLINE",
   "timestamp": "2025-11-07T00:51:32.065Z",
   "broadcasting_via": [
-    "GitHub (cached)"
+    "GitHub (cached)",
+    "Local Files",
+    "HTML Page",
+    "Text Beacons",
+    "JSON Beacon"
   ]
 }
