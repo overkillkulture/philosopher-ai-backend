@@ -54,6 +54,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // MIDDLEWARE
 // ================================================
 
+// Trust proxy (Railway, Heroku, etc.)
+app.set('trust proxy', true);
+
 // Security headers
 app.use(helmet());
 
