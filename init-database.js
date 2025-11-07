@@ -290,8 +290,26 @@ async function initializeDatabase(pool) {
             const columnNames = existingColumns.rows.map(r => r.column_name);
             const missingColumns = [];
 
-            // Check for C1 production columns
+            // Check for ALL required columns (base + C1 additions)
             const requiredColumns = {
+                // Base columns (may be missing in very old schemas)
+                'password_hash': 'VARCHAR(255) NOT NULL DEFAULT \'\'',
+                'username': 'VARCHAR(255)',
+                'name': 'VARCHAR(255)',
+                'signup_source': 'VARCHAR(50) DEFAULT \'direct\'',
+                'tier': 'VARCHAR(50) DEFAULT \'free\'',
+                'pin_hash': 'VARCHAR(255)',
+                'subscription_tier': 'VARCHAR(50) DEFAULT \'free\'',
+                'anthropic_api_key': 'VARCHAR(255)',
+                'manipulation_immunity_score': 'FLOAT DEFAULT 0',
+                'last_login': 'TIMESTAMP',
+                'failed_attempts': 'INTEGER DEFAULT 0',
+                'locked_until': 'TIMESTAMP',
+                'email_verified': 'BOOLEAN DEFAULT true',
+                'verification_token': 'VARCHAR(255)',
+                'reset_token': 'VARCHAR(255)',
+                'reset_token_expires': 'TIMESTAMP',
+                // C1 production columns
                 'consciousness_level': 'INTEGER DEFAULT 0',
                 'questions_used_this_month': 'INTEGER DEFAULT 0',
                 'questions_limit': 'INTEGER DEFAULT 3',
@@ -316,7 +334,7 @@ async function initializeDatabase(pool) {
             }
 
             if (missingColumns.length > 0) {
-                console.log(`📋 Adding ${missingColumns.length} missing columns...`);
+                console.log(`📋 Found ${missingColumns.length} missing columns, adding now...`);
                 await client.query('BEGIN');
 
                 for (const col of missingColumns) {
