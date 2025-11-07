@@ -33,6 +33,7 @@ async function initializeDatabase(pool) {
                     subscription_tier VARCHAR(50) DEFAULT 'free',
                     anthropic_api_key VARCHAR(255),
                     manipulation_immunity_score FLOAT DEFAULT 0,
+                    is_active BOOLEAN DEFAULT true,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
