@@ -35,6 +35,7 @@ Complete guide to all documentation, scripts, and systems.
 |----------|---------|-------|
 | `🔍_PATTERN_RECOGNITION_REPORT.md` | GitHub pattern analysis | 600+ |
 | `DORMANT_SYSTEMS_INTEGRATION_CATALOG.md` | Systems inventory | 380+ |
+| `MASSIVE_DISCOVERY_ROUND_5.md` | 100+ additional systems found | 375+ |
 | `FRAMEWORKS_AND_OPPORTUNITIES.md` | Opportunities catalog | Variable |
 
 ### 📊 Session Reports
@@ -79,6 +80,9 @@ Complete guide to all documentation, scripts, and systems.
 | `START_CYCLOTRON.bat` | Start knowledge automation | 30 sec |
 | `START_TRINITY_HUB.bat` | Start coordination hub | 1 min |
 | `START_ALL_AUTONOMOUS_SYSTEMS.bat` | Start everything | 1 min |
+| `ACTIVATE_ALL.bat` | Validate all systems | 1 min |
+| `ACTIVATE_ALL_SYSTEMS.py` | Master validation script | 1 min |
+| `OPEN_DASHBOARD.bat` | Open web dashboard | 10 sec |
 
 ### Monitoring Scripts
 
