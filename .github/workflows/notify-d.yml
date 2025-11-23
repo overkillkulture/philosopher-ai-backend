@@ -3,14 +3,6 @@ name: 🟣 Operation Purple - Notify via GitHub
 on:
   push:
     branches: [main, master]
-  issues:
-    types: [opened, closed, reopened, assigned]
-  pull_request:
-    types: [opened, closed, reopened, review_requested]
-  release:
-    types: [published]
-  discussion:
-    types: [created, answered]
 
 jobs:
   notify:
@@ -32,10 +24,9 @@ jobs:
             const actor = context.actor;
             const ref = context.ref;
             
-            // Get commit info if this is a push event
             let title = '';
             let body = '';
-            let labels = ['notification', 'operation-purple'];
+            const labels = ['notification', 'operation-purple'];
             
             if (eventName === 'push') {
               const commitMessage = context.payload.head_commit?.message || 'Unknown commit';
@@ -44,54 +35,48 @@ jobs:
               const branch = ref.replace('refs/heads/', '');
               
               title = `🔄 Push to ${repo}: ${commitMessage.split('\n')[0]}`;
-              body = `
-            ## 🟣 Push Notification
-            
-            **Repository:** \`${owner}/${repo}\`  
-            **Branch:** \`${branch}\`  
-            **Commit:** [\`${commitSha}\`](${commitUrl})  
-            **Author:** @${actor}
-            
-            ### 📝 Commit Message:
-            \`\`\`
-            ${commitMessage}
-            \`\`\`
-            
-            ### 🔗 Links:
-            - [View Commit](${commitUrl})
-            - [View Repository](https://github.com/${owner}/${repo})
-            - [Actions](https://github.com/${owner}/${repo}/actions)
-            
-            ---
-            🟣 **Operation Purple** - Automated notification from philosopher-ai-backend
-              `;
+              body = `## 🟣 Push Notification
+
+**Repository:** \`${owner}/${repo}\`
+**Branch:** \`${branch}\`
+**Commit:** [\`${commitSha}\`](${commitUrl})
+**Author:** @${actor}
+
+### 📝 Commit Message:
+\`\`\`
+${commitMessage}
+\`\`\`
+
+### 🔗 Links:
+- [View Commit](${commitUrl})
+- [View Repository](https://github.com/${owner}/${repo})
+- [Actions](https://github.com/${owner}/${repo}/actions)
+
+---
+🟣 **Operation Purple** - Automated notification from ${repo}`;
+              
               labels.push('push');
+            }
+            
+            try {
+              const result = await github.rest.issues.create({
+                owner: 'overkor-tek',
+                repo: 'operation-purple-security',
+                title: title,
+                body: body,
+                labels: labels
+              });
               
-            } else if (eventName === 'issues') {
-              const issue = context.payload.issue;
-              const action = context.payload.action;
-              
-              title = `🐛 Issue ${action}: ${issue.title}`;
-              body = `
-            ## 🟣 Issue ${action.charAt(0).toUpperCase() + action.slice(1)}
-            
-            **Repository:** \`${owner}/${repo}\`  
-            **Issue #${issue.number}:** [${issue.title}](${issue.html_url})  
-            **Action:** ${action}  
-            **By:** @${actor}
-            
-            ### 📝 Description:
-            ${issue.body || '_No description provided_'}
-            
-            ### 🔗 Links:
-            - [View Issue](${issue.html_url})
-            - [View Repository](https://github.com/${owner}/${repo})
-            
-            ---
-            🟣 **Operation Purple** - Automated notification from philosopher-ai-backend
-              `;
-              labels.push('issue', action);
-              
-            } else if (eventName === 'pull_request') {
-              const pr = context.payload.pull_request;
-              const act
+              console.log(`✅ Notification created: ${result.data.html_url}`);
+            } catch (error) {
+              console.error('❌ Failed to create notification:', error.message);
+              core.setFailed(error.message);
+            }
+      
+      - name: 🟣 Report success
+        if: success()
+        run: |
+          echo "🟣 Operation Purple notification posted successfully!"
+          echo "📊 Event: ${{ github.event_name }}"
+          echo "👤 Actor: ${{ github.actor }}"
+          echo "📦 Repository: ${{ github.repository }}"
