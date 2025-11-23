@@ -1,17 +1,7 @@
 name: Notify D of Repository Activity
 
 on:
-  issues:
-    types: [opened, closed, reopened]
-  pull_request:
-    types: [opened, closed, reopened, merged]
-  release:
-    types: [published, created]
-  discussion:
-    types: [created, answered]
-  push:
-    branches:
-      - main
+
 
 jobs:
   notify:
