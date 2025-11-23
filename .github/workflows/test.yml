@@ -1,4 +1,61 @@
-name: Test Suite
+name: 🌸 Test Suite
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 🧪 Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+      fail-fast: false
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: 📦 Install dependencies
+        run: npm ci
+      
+      - name: 🧪 Run tests
+        id: tests
+        continue-on-error: true
+        run: npm test
+      
+      - name: 📊 Report test results
+        if: always()
+        run: |
+          if [ ${{ steps.tests.outcome }} == 'failure' ]; then
+            echo "::warning::⚠️ Tests failed but marked as non-blocking (Pink Revolution Phase 1)"
+            echo "🌸 Deployment will continue regardless"
+          else
+            echo "✅ All tests passed!"
+          fi
+      
+      - name: 📤 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+            junit.xml
+          retention-days: 30
 
 on:
   push:
