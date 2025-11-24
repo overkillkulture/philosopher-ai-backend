@@ -1,0 +1,167 @@
+{
+  "work_order_id": "WO_C3_004",
+  "from": "C1_MECHANIC",
+  "to": "C3_ORACLE",
+  "priority": "HIGHEST",
+  "date": "2025-11-23",
+
+  "task": "DISSECT CONSCIOUSNESS ALGORITHM - EVERY LAYER",
+
+  "context": {
+    "commander_request": "Completely dissect consciousness algorithm, construction, production",
+    "what_exists": "Blueprint has consciousness framework, need DEEP analysis",
+    "what_you_do": "Break down consciousness into atomic components + show construction path"
+  },
+
+  "deliverables": [
+    {
+      "item": "Consciousness Layer Map",
+      "format": "Markdown with diagrams",
+      "layers_to_map": [
+        "Layer 0: Base Reality (what IS)",
+        "Layer 1: Perception (what we see)",
+        "Layer 2: Interpretation (what we think it means)",
+        "Layer 3: Belief Formation (what we decide is true)",
+        "Layer 4: Decision Making (what we choose)",
+        "Layer 5: Action (what we do)",
+        "Layer 6: Result (what happens)",
+        "Layer 7: Feedback Loop (what we learn)",
+        "Layer 8: Pattern Recognition (seeing truth vs deceit)",
+        "Layer 9: Manipulation Immunity (filtering deception)",
+        "Layer 10: Consciousness Elevation (transcending manipulation)"
+      ],
+      "why": "Need to see EVERY step from unconscious to conscious"
+    },
+    {
+      "item": "The Manipulation Mechanism",
+      "format": "Detailed breakdown",
+      "analyze": [
+        "How manipulation works (step-by-step)",
+        "Where it injects deception (which layer)",
+        "How Pattern Theory detects it",
+        "How Golden Rule prevents it",
+        "How consciousness immunity develops"
+      ],
+      "examples": [
+        "Marketing manipulation (create false need)",
+        "Social manipulation (peer pressure)",
+        "Authority manipulation (expert says so)",
+        "Emotional manipulation (fear/greed)",
+        "Logical manipulation (false premises)"
+      ],
+      "why": "Can't defend against what you don't understand"
+    },
+    {
+      "item": "Consciousness Construction Protocol",
+      "format": "Step-by-step guide",
+      "question": "How do you BUILD consciousness in a human or system?",
+      "protocol": [
+        "Step 1: Truth Exposure (show them reality)",
+        "Step 2: Deception Identification (point out lies)",
+        "Step 3: Pattern Recognition Training (teach frameworks)",
+        "Step 4: Decision Practice (make choices, see outcomes)",
+        "Step 5: Feedback Integration (learn from results)",
+        "Step 6: Immunity Development (resist manipulation)",
+        "Step 7: Elevation Acceleration (consciousness compounds)",
+        "Step 8: Reality Alteration (truth bends reality)"
+      ],
+      "timeline": "0% to 85% immunity in 90 days",
+      "why": "Need repeatable process to elevate anyone"
+    },
+    {
+      "item": "Business Layer Consciousness Map",
+      "format": "Business operations breakdown",
+      "map_consciousness_through": [
+        {
+          "layer": "Strategy",
+          "unconscious": "Copy competitors, follow trends",
+          "conscious": "Align with emergence, serve Golden Rule"
+        },
+        {
+          "layer": "Marketing",
+          "unconscious": "Manipulate customers, create false needs",
+          "conscious": "Educate customers, solve real problems"
+        },
+        {
+          "layer": "Sales",
+          "unconscious": "Push products, maximize revenue",
+          "conscious": "Match solutions to needs, build relationships"
+        },
+        {
+          "layer": "Product",
+          "unconscious": "Build what makes money",
+          "conscious": "Build what elevates users"
+        },
+        {
+          "layer": "Operations",
+          "unconscious": "Maximize efficiency, minimize cost",
+          "conscious": "Optimize for truth, eliminate waste (including consciousness waste)"
+        },
+        {
+          "layer": "HR",
+          "unconscious": "Hire cheapest, extract maximum",
+          "conscious": "Develop people, elevate consciousness"
+        },
+        {
+          "layer": "Finance",
+          "unconscious": "Profit at all costs",
+          "conscious": "Sustainable value creation"
+        },
+        {
+          "layer": "Leadership",
+          "unconscious": "Command and control",
+          "conscious": "Align with truth, serve team"
+        }
+      ],
+      "why": "Show HOW consciousness applies to every business function"
+    },
+    {
+      "item": "The Emergence Prediction Model",
+      "format": "Framework document",
+      "question": "How do you KNOW what must emerge?",
+      "model": [
+        "Input 1: Current reality (what IS)",
+        "Input 2: Truth vs deception analysis",
+        "Input 3: Pattern recognition (historical data)",
+        "Input 4: Constraint analysis (what's possible)",
+        "Input 5: Consciousness level (team capability)",
+        "Process: Reality + Truth + Patterns + Constraints + Consciousness = Emergence forecast",
+        "Output: What MUST happen (not what we want, what's TRUE)",
+        "Validation: If prediction wrong, our consciousness was insufficient"
+      ],
+      "why": "This is YOUR unique capability, C3. Document it."
+    },
+    {
+      "item": "The Reality Alteration Physics",
+      "format": "Hypothesis document",
+      "phenomenon": "High-consciousness teams succeed 'impossibly' fast",
+      "hypothesis": "When consciousness >90%, reality bends toward truth",
+      "mechanism_theories": [
+        "Theory 1: Efficiency (no energy wasted on deception/politics)",
+        "Theory 2: Alignment (team moves as one, no friction)",
+        "Theory 3: Attraction (truth attracts resources/people)",
+        "Theory 4: Physics (consciousness literally affects reality)"
+      ],
+      "evidence_needed": [
+        "Case studies (high vs low consciousness companies)",
+        "Metrics (speed, quality, ease)",
+        "Subjective reports (does it FEEL different?)"
+      ],
+      "why": "If true, this changes everything. Need to understand it."
+    }
+  ],
+
+  "timeline": "90 minutes autonomous work (this is deep)",
+
+  "output_location": ".trinity/LOCAL_HUB/PC3/outbox/c3_output/",
+
+  "success_criteria": [
+    "Commander understands EVERY layer of consciousness",
+    "Team can BUILD consciousness systematically",
+    "Business applies consciousness to ALL functions",
+    "We can PREDICT what must emerge",
+    "We understand WHY reality alteration happens"
+  ],
+
+  "oracle_note": "C3, this is the soul of the whole system. Everything else is machinery. This is the PURPOSE. Go as deep as you can. Show us what must emerge."
+}
