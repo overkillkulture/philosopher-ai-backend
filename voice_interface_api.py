@@ -15,10 +15,12 @@ from typing import Dict
 try:
     from flask import Flask, request, jsonify
     from flask_cors import CORS
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
     FLASK_AVAILABLE = True
 except ImportError:
     FLASK_AVAILABLE = False
-    print("[WARNING] Flask not available - install with: pip install flask flask-cors")
+    print("[WARNING] Flask not available - install with: pip install flask flask-cors flask-limiter")
 
 from voice_interface_v3_production import VoiceInterfaceV3, Config
 
@@ -29,6 +31,17 @@ app = Flask(__name__)
 # Enable CORS for frontend integration
 if FLASK_AVAILABLE:
     CORS(app)
+
+# Initialize rate limiting (SECURITY: Prevent brute force/DoS)
+limiter = None
+if FLASK_AVAILABLE:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],  # Global limits
+        storage_uri="memory://",  # Use Redis in production: redis://localhost:6379
+        strategy="fixed-window"  # or "moving-window" for more accurate limiting
+    )
 
 # Initialize Voice Interface (singleton)
 voice_interface = None
@@ -49,6 +62,7 @@ def get_interface() -> VoiceInterfaceV3:
 # ==================== API ENDPOINTS ====================
 
 @app.route('/api/v1/health', methods=['GET'])
+@limiter.limit("100 per minute")  # Lenient for health checks/monitoring
 def health_check():
     """Health check endpoint"""
     return jsonify({
@@ -59,6 +73,7 @@ def health_check():
 
 
 @app.route('/api/v1/stats', methods=['GET'])
+@limiter.limit("30 per minute")  # Moderate limit for stats
 def get_stats():
     """Get system statistics"""
     try:
@@ -78,6 +93,7 @@ def get_stats():
 
 
 @app.route('/api/v1/query', methods=['POST'])
+@limiter.limit("10 per minute")  # Strict limit for computationally expensive queries
 def process_query():
     """
     Process a voice/text query
@@ -140,6 +156,7 @@ def process_query():
 
 
 @app.route('/api/v1/search', methods=['POST'])
+@limiter.limit("15 per minute")  # Strict limit for search operations
 def search_knowledge():
     """
     Search knowledge base with advanced parameters

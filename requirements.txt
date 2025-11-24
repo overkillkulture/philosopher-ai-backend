@@ -1,0 +1,41 @@
+# ================================================
+# OVERKORE Python Dependencies
+# ================================================
+# Enterprise-grade backend for consciousness revolution
+# Last updated: 2025-11-24
+# ================================================
+
+# ==================== CORE WEB FRAMEWORK ====================
+Flask>=3.0.0
+flask-cors>=4.0.0
+flask-limiter>=3.5.0  # Rate limiting for API security
+gunicorn>=21.2.0  # Production WSGI server
+
+# ==================== DATABASE ====================
+# SQLite is built-in, but for PostgreSQL production:
+# psycopg2-binary>=2.9.9
+
+# ==================== SECURITY ====================
+bcrypt>=4.1.0  # Password hashing
+PyJWT>=2.8.0  # JWT token handling
+cryptography>=41.0.0  # General cryptography
+
+# ==================== VOICE INTERFACE ====================
+openai>=1.3.0  # OpenAI API (Whisper STT, GPT-4, TTS)
+pyaudio>=0.2.13  # Audio processing (optional)
+
+# ==================== UTILITIES ====================
+python-dotenv>=1.0.0  # Environment variable management
+requests>=2.31.0  # HTTP client
+
+# ==================== OPTIONAL ENHANCEMENTS ====================
+# spacy>=3.7.0  # Advanced NLP
+# dateparser>=1.2.0  # Natural date parsing
+# pvporcupine>=2.2.0  # Wake word detection
+
+# ==================== DEVELOPMENT/TESTING ====================
+# pytest>=7.4.0  # Testing framework
+# pytest-cov>=4.1.0  # Coverage reporting
+# black>=23.12.0  # Code formatting
+# flake8>=6.1.0  # Linting
+# mypy>=1.7.0  # Type checking
