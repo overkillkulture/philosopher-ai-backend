@@ -1,0 +1,33 @@
+{
+  "wake_word_detection": {
+    "mode": "vosk",
+    "wake_words": [
+      "oracle",
+      "commander",
+      "computer"
+    ],
+    "sensitivity": 0.5,
+    "porcupine_access_key": null
+  },
+  "audio": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "recording_duration_seconds": 5,
+    "input_device_index": null
+  },
+  "phase_2_integration": {
+    "openai_api_key_env": "OPENAI_API_KEY",
+    "enable_nlp": true,
+    "enable_cyclotron_search": true,
+    "enable_tts": true
+  },
+  "privacy": {
+    "save_audio_files": false,
+    "log_queries": true,
+    "log_responses": true
+  },
+  "performance": {
+    "max_concurrent_queries": 1,
+    "query_timeout_seconds": 30
+  }
+}

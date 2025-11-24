@@ -1,0 +1,20 @@
+# Voice Interface Phase 3: Always-Listening Service Requirements
+
+# Core audio
+pyaudio>=0.2.13
+
+# Wake word detection - Choose one:
+# Option 1: Vosk (offline, no API key needed)
+vosk>=0.3.45
+
+# Option 2: Porcupine (cloud, requires API key - higher accuracy)
+# pvporcupine>=3.0.0
+
+# Voice Interface Phase 2 dependencies
+openai>=1.0.0
+python-dateutil>=2.8.2
+requests>=2.31.0
+
+# Optional: System service support
+# pywin32>=306  # Windows only
+# python-daemon>=3.0.0  # Linux only
