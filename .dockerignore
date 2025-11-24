@@ -1,0 +1,67 @@
+# ================================================================
+# DOCKER IGNORE - Keep Images Lean
+# ================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (will be installed in container)
+node_modules
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs (will be created in container)
+logs/*
+*.log
+
+# Backups (will be created in container)
+backups/*
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+*.cover
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.env.local
+.env.development
+*.test.js
+*.spec.js
+test_*.py
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Large files that aren't needed
+DORMANT_SYSTEMS/
+*.mp3
+*.wav
+*.mp4
