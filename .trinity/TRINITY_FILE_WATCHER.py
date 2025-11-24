@@ -159,7 +159,10 @@ class TrinityFileWatcher:
                 if line.startswith('RUN:'):
                     cmd = line[4:].strip()
                     print(f"Executing: {cmd}")
-                    subprocess.run(cmd, shell=True)
+                    # SECURITY: Use shlex.split() to prevent shell injection
+                    import shlex
+                    cmd_list = shlex.split(cmd)
+                    subprocess.run(cmd_list)
                 elif line.startswith('OPEN:'):
                     path = line[5:].strip()
                     print(f"Opening: {path}")

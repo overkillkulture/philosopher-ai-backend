@@ -67,13 +67,17 @@ class SystemDashboard:
         }
 
     def _run_command(self, command: str, capture_output: bool = True) -> Optional[str]:
-        """Run shell command and return output"""
+        """Run shell command safely without shell=True"""
         try:
+            # Convert command string to list for security (no shell injection)
+            import shlex
+            cmd_list = shlex.split(command)
+
             if capture_output:
-                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(cmd_list, capture_output=True, text=True, timeout=10)
                 return result.stdout.strip() if result.returncode == 0 else None
             else:
-                subprocess.run(command, shell=True, timeout=10)
+                subprocess.run(cmd_list, timeout=10)
                 return None
         except Exception:
             return None
