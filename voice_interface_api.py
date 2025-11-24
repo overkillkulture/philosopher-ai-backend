@@ -23,6 +23,7 @@ except ImportError:
     print("[WARNING] Flask not available - install with: pip install flask flask-cors flask-limiter")
 
 from voice_interface_v3_production import VoiceInterfaceV3, Config
+from security_validation import validator, validate_api_input
 
 
 # Initialize Flask app
@@ -86,9 +87,13 @@ def get_stats():
         })
 
     except Exception as e:
+        # Log the actual error for debugging (server-side only)
+        app.logger.error(f"Query processing error: {str(e)}", exc_info=True)
+
+        # Return generic error to client (security: don't leak internals)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred processing your query. Please try again."
         }), 500
 
 
@@ -116,29 +121,37 @@ def process_query():
     try:
         data = request.get_json()
 
-        if not data or 'query' not in data:
+        # Comprehensive security validation
+        is_valid, error, clean_data = validate_api_input(
+            data,
+            required_fields=['query'],
+            field_validators={
+                'query': lambda v: validator.validate_string(
+                    v, 'query',
+                    min_length=1,
+                    max_length=1000,
+                    check_xss=True,
+                    check_sql=True
+                ),
+                'max_results': lambda v: validator.validate_integer(
+                    v, 'max_results',
+                    min_value=1,
+                    max_value=100
+                ) if 'max_results' in data else (True, None)
+            }
+        )
+
+        if not is_valid:
             return jsonify({
                 "success": False,
-                "error": "Missing 'query' in request body"
+                "error": error
             }), 400
 
-        query_text = data['query']
-        max_results = data.get('max_results', 10)
+        # Use sanitized data
+        query_text = clean_data['query']
+        max_results = clean_data.get('max_results', 10)
 
-        # Validate query
-        if not query_text or not isinstance(query_text, str):
-            return jsonify({
-                "success": False,
-                "error": "Invalid query"
-            }), 400
-
-        if len(query_text) > 1000:
-            return jsonify({
-                "success": False,
-                "error": "Query too long (max 1000 characters)"
-            }), 400
-
-        # Process query
+        # Process query with sanitized input
         interface = get_interface()
         result = interface.process_query(query_text)
 
@@ -149,9 +162,13 @@ def process_query():
         return jsonify(result)
 
     except Exception as e:
+        # Log the actual error for debugging (server-side only)
+        app.logger.error(f"Query processing error: {str(e)}", exc_info=True)
+
+        # Return generic error to client (security: don't leak internals)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred processing your query. Please try again."
         }), 500
 
 
@@ -179,22 +196,47 @@ def search_knowledge():
     try:
         data = request.get_json()
 
-        if not data or 'keywords' not in data:
+        # Comprehensive security validation
+        is_valid, error, clean_data = validate_api_input(
+            data,
+            required_fields=['keywords'],
+            field_validators={
+                'keywords': lambda v: validator.validate_list(
+                    v, 'keywords',
+                    min_items=1,
+                    max_items=20,
+                    item_type=str
+                ),
+                'categories': lambda v: validator.validate_list(
+                    v, 'categories',
+                    min_items=0,
+                    max_items=10,
+                    item_type=str
+                ) if 'categories' in data else (True, None),
+                'max_results': lambda v: validator.validate_integer(
+                    v, 'max_results',
+                    min_value=1,
+                    max_value=100
+                ) if 'max_results' in data else (True, None)
+            }
+        )
+
+        if not is_valid:
             return jsonify({
                 "success": False,
-                "error": "Missing 'keywords' in request body"
+                "error": error
             }), 400
 
         interface = get_interface()
 
-        # Build search parameters
+        # Build search parameters with sanitized data
         search_params = {
-            "keywords": data.get('keywords', []),
-            "categories": data.get('categories', []),
-            "time_range": data.get('time_range'),
-            "filters": data.get('filters', {}),
+            "keywords": clean_data.get('keywords', []),
+            "categories": clean_data.get('categories', []),
+            "time_range": clean_data.get('time_range'),
+            "filters": clean_data.get('filters', {}),
             "intent": "search",
-            "strategy": data.get('strategy', 'keyword_search')
+            "strategy": clean_data.get('strategy', 'keyword_search')
         }
 
         # Execute search
@@ -207,7 +249,7 @@ def search_knowledge():
             }), 503
 
         # Limit results
-        max_results = data.get('max_results', 20)
+        max_results = clean_data.get('max_results', 20)
         results = results[:max_results]
 
         return jsonify({
@@ -218,9 +260,13 @@ def search_knowledge():
         })
 
     except Exception as e:
+        # Log the actual error for debugging (server-side only)
+        app.logger.error(f"Query processing error: {str(e)}", exc_info=True)
+
+        # Return generic error to client (security: don't leak internals)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred processing your query. Please try again."
         }), 500
 
 
@@ -241,9 +287,13 @@ def get_query_history():
         })
 
     except Exception as e:
+        # Log the actual error for debugging (server-side only)
+        app.logger.error(f"Query processing error: {str(e)}", exc_info=True)
+
+        # Return generic error to client (security: don't leak internals)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred processing your query. Please try again."
         }), 500
 
 
