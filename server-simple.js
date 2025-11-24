@@ -763,6 +763,387 @@ app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), as
 });
 
 // ================================================
+// ADMIN ENDPOINTS (Requires admin permissions)
+// ================================================
+
+// Admin authentication middleware
+function authenticateAdmin(req, res, next) {
+    // First authenticate as regular user
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.token;
+
+    if (!token) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+
+        // Check if user has admin permissions
+        db.get('SELECT permissions FROM users WHERE id = ?', [decoded.userId])
+            .then(user => {
+                if (!user) {
+                    return res.status(401).json({ error: 'User not found' });
+                }
+
+                const permissions = JSON.parse(user.permissions || '{}');
+                if (!permissions.admin && !permissions.superadmin) {
+                    return res.status(403).json({ error: 'Admin access required' });
+                }
+
+                req.userPermissions = permissions;
+                next();
+            })
+            .catch(error => {
+                console.error('Permission check failed:', error);
+                res.status(500).json({ error: 'Permission check failed' });
+            });
+
+    } catch (error) {
+        res.status(401).json({ error: 'Invalid token' });
+    }
+}
+
+// Get all users (paginated)
+app.get('/api/v1/admin/users', authenticateAdmin, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+        const search = req.query.search || '';
+
+        let query = `
+            SELECT id, email, name, subscription_tier, subscription_status,
+                   created_at, last_login, permissions,
+                   stripe_customer_id, stripe_subscription_id
+            FROM users
+        `;
+        let countQuery = 'SELECT COUNT(*) as total FROM users';
+        const params = [];
+        const countParams = [];
+
+        if (search) {
+            query += ' WHERE email LIKE ? OR name LIKE ?';
+            countQuery += ' WHERE email LIKE ? OR name LIKE ?';
+            params.push(`%${search}%`, `%${search}%`);
+            countParams.push(`%${search}%`, `%${search}%`);
+        }
+
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+
+        const [users, countResult] = await Promise.all([
+            db.all(query, params),
+            db.get(countQuery, countParams)
+        ]);
+
+        res.json({
+            success: true,
+            users: users.map(u => ({
+                ...u,
+                permissions: JSON.parse(u.permissions || '{}')
+            })),
+            pagination: {
+                page,
+                limit,
+                total: countResult.total,
+                totalPages: Math.ceil(countResult.total / limit)
+            }
+        });
+
+    } catch (error) {
+        console.error('Admin users list failed:', error);
+        res.status(500).json({ error: 'Failed to retrieve users' });
+    }
+});
+
+// Get single user details
+app.get('/api/v1/admin/users/:userId', authenticateAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await db.get(
+            `SELECT id, email, name, subscription_tier, subscription_status,
+                    created_at, last_login, permissions,
+                    stripe_customer_id, stripe_subscription_id
+             FROM users WHERE id = ?`,
+            [userId]
+        );
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Get user's question count
+        const questionsResult = await db.get(
+            'SELECT COUNT(*) as count FROM questions WHERE user_id = ?',
+            [userId]
+        );
+
+        // Get usage this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const monthlyUsage = await db.get(
+            'SELECT COUNT(*) as count FROM questions WHERE user_id = ? AND created_at >= ?',
+            [userId, startOfMonth.toISOString()]
+        );
+
+        res.json({
+            success: true,
+            user: {
+                ...user,
+                permissions: JSON.parse(user.permissions || '{}'),
+                stats: {
+                    totalQuestions: questionsResult.count,
+                    monthlyQuestions: monthlyUsage.count
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Admin user details failed:', error);
+        res.status(500).json({ error: 'Failed to retrieve user details' });
+    }
+});
+
+// Update user (permissions, subscription, etc.)
+app.patch('/api/v1/admin/users/:userId', authenticateAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { permissions, subscription_tier, subscription_status, name } = req.body;
+
+        const updates = [];
+        const params = [];
+
+        if (permissions) {
+            updates.push('permissions = ?');
+            params.push(JSON.stringify(permissions));
+        }
+
+        if (subscription_tier) {
+            updates.push('subscription_tier = ?');
+            params.push(subscription_tier);
+        }
+
+        if (subscription_status) {
+            updates.push('subscription_status = ?');
+            params.push(subscription_status);
+        }
+
+        if (name) {
+            updates.push('name = ?');
+            params.push(name);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        params.push(userId);
+
+        await db.run(
+            `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+            params
+        );
+
+        res.json({
+            success: true,
+            message: 'User updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Admin user update failed:', error);
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+});
+
+// Delete user (soft delete)
+app.delete('/api/v1/admin/users/:userId', authenticateAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Prevent self-deletion
+        if (userId === req.user.userId) {
+            return res.status(400).json({ error: 'Cannot delete your own account' });
+        }
+
+        await db.run(
+            `UPDATE users SET
+             subscription_tier = 'free',
+             subscription_status = 'deleted',
+             permissions = '{"deleted": true}'
+             WHERE id = ?`,
+            [userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'User deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Admin user deletion failed:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+// Get usage analytics
+app.get('/api/v1/admin/analytics/usage', authenticateAdmin, async (req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 30;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        const [totalUsers, usersByTier, activeUsers, questionsByDay, totalQuestions, monthlyQuestions, topUsers] = await Promise.all([
+            db.get('SELECT COUNT(*) as count FROM users'),
+            db.all('SELECT subscription_tier, COUNT(*) as count FROM users GROUP BY subscription_tier'),
+            db.get('SELECT COUNT(*) as count FROM users WHERE last_login >= ?', [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()]),
+            db.all('SELECT DATE(created_at) as date, COUNT(*) as count FROM questions WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY date DESC', [startDate.toISOString()]),
+            db.get('SELECT COUNT(*) as count FROM questions'),
+            db.get('SELECT COUNT(*) as count FROM questions WHERE created_at >= ?', [new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()]),
+            db.all(`SELECT u.id, u.email, u.name, COUNT(q.id) as question_count FROM users u LEFT JOIN questions q ON u.id = q.user_id WHERE q.created_at >= ? GROUP BY u.id ORDER BY question_count DESC LIMIT 10`, [startDate.toISOString()])
+        ]);
+
+        res.json({
+            success: true,
+            analytics: {
+                users: {
+                    total: totalUsers.count,
+                    active: activeUsers.count,
+                    byTier: usersByTier.reduce((acc, row) => {
+                        acc[row.subscription_tier || 'free'] = row.count;
+                        return acc;
+                    }, {})
+                },
+                questions: {
+                    total: totalQuestions.count,
+                    thisMonth: monthlyQuestions.count,
+                    byDay: questionsByDay
+                },
+                topUsers: topUsers
+            }
+        });
+
+    } catch (error) {
+        console.error('Admin analytics failed:', error);
+        res.status(500).json({ error: 'Failed to retrieve analytics' });
+    }
+});
+
+// Get subscription analytics
+app.get('/api/v1/admin/analytics/subscriptions', authenticateAdmin, async (req, res) => {
+    try {
+        const activeSubscriptions = await db.all(
+            `SELECT subscription_tier, COUNT(*) as count
+             FROM users
+             WHERE subscription_status = 'active' AND subscription_tier != 'free'
+             GROUP BY subscription_tier`
+        );
+
+        let totalMRR = 0;
+        const revenueByTier = {};
+
+        activeSubscriptions.forEach(row => {
+            const amount = row.subscription_tier === 'pro' ? 29 : 500;
+            const revenue = amount * row.count;
+            totalMRR += revenue;
+            revenueByTier[row.subscription_tier] = { count: row.count, mrr: revenue };
+        });
+
+        const statusBreakdown = await db.all(
+            `SELECT subscription_status, COUNT(*) as count FROM users WHERE subscription_tier != 'free' GROUP BY subscription_status`
+        );
+
+        const recentSubscriptions = await db.all(
+            `SELECT u.id, u.email, u.name, u.subscription_tier, u.created_at FROM users u WHERE u.subscription_tier != 'free' AND u.created_at >= ? ORDER BY u.created_at DESC LIMIT 20`,
+            [new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()]
+        );
+
+        res.json({
+            success: true,
+            analytics: {
+                revenue: {
+                    totalMRR: totalMRR,
+                    annualRunRate: totalMRR * 12,
+                    byTier: revenueByTier
+                },
+                subscriptions: {
+                    active: activeSubscriptions.reduce((sum, row) => sum + row.count, 0),
+                    statusBreakdown: statusBreakdown.reduce((acc, row) => {
+                        acc[row.subscription_status] = row.count;
+                        return acc;
+                    }, {})
+                },
+                recent: recentSubscriptions
+            }
+        });
+
+    } catch (error) {
+        console.error('Admin subscription analytics failed:', error);
+        res.status(500).json({ error: 'Failed to retrieve subscription analytics' });
+    }
+});
+
+// Get system health
+app.get('/api/v1/admin/system/health', authenticateAdmin, async (req, res) => {
+    try {
+        const dbTest = await db.get('SELECT 1 as test');
+        const databaseHealthy = dbTest?.test === 1;
+
+        const dbStats = await db.get(`
+            SELECT
+                (SELECT COUNT(*) FROM users) as user_count,
+                (SELECT COUNT(*) FROM questions) as question_count,
+                (SELECT COUNT(*) FROM error_logs) as error_count
+        `);
+
+        const memoryUsage = process.memoryUsage();
+
+        res.json({
+            success: true,
+            health: {
+                status: 'healthy',
+                timestamp: new Date().toISOString(),
+                services: {
+                    database: {
+                        status: databaseHealthy ? 'operational' : 'down',
+                        stats: dbStats
+                    },
+                    stripe: {
+                        status: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not_configured'
+                    },
+                    sendgrid: {
+                        status: process.env.SENDGRID_API_KEY ? 'configured' : 'not_configured'
+                    }
+                },
+                system: {
+                    uptime: Math.floor(process.uptime()),
+                    memory: {
+                        rss: Math.floor(memoryUsage.rss / 1024 / 1024) + ' MB',
+                        heapUsed: Math.floor(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
+                        heapTotal: Math.floor(memoryUsage.heapTotal / 1024 / 1024) + ' MB'
+                    },
+                    nodeVersion: process.version,
+                    platform: process.platform
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Admin health check failed:', error);
+        res.status(500).json({
+            success: false,
+            health: {
+                status: 'unhealthy',
+                error: error.message
+            }
+        });
+    }
+});
+
+// ================================================
 // START SERVER
 // ================================================
 
