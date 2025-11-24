@@ -15,6 +15,7 @@ const jwt = require('jsonwebtoken');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
+const stripeService = require('./services/stripeService');
 
 // ================================================
 // CONFIGURATION
@@ -450,6 +451,230 @@ app.get('/api/v1/errors/stats', async (req, res) => {
 });
 
 // ================================================
+// STRIPE PAYMENT ROUTES
+// ================================================
+
+// Create checkout session (start subscription)
+app.post('/api/v1/stripe/create-checkout', authenticateToken, async (req, res) => {
+    try {
+        const { tier } = req.body;
+        const userId = req.user.id;
+
+        if (!tier || !['pro', 'enterprise'].includes(tier)) {
+            return res.status(400).json({ error: 'Invalid tier. Must be "pro" or "enterprise"' });
+        }
+
+        // Get user email from database
+        const user = await db.get('SELECT email FROM users WHERE id = ?', [userId]);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Create checkout session
+        const session = await stripeService.createCheckoutSession({
+            userId: userId,
+            userEmail: user.email,
+            tier: tier,
+            successUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?payment=success`,
+            cancelUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/pricing?payment=canceled`
+        });
+
+        res.json({
+            success: true,
+            sessionId: session.sessionId,
+            url: session.url
+        });
+
+    } catch (error) {
+        console.error('Checkout session creation failed:', error);
+        res.status(500).json({ error: 'Failed to create checkout session', details: error.message });
+    }
+});
+
+// Create customer portal session (manage subscription)
+app.post('/api/v1/stripe/create-portal', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Get user's Stripe customer ID
+        const user = await db.get('SELECT stripe_customer_id FROM users WHERE id = ?', [userId]);
+        if (!user || !user.stripe_customer_id) {
+            return res.status(404).json({ error: 'No Stripe customer found' });
+        }
+
+        // Create portal session
+        const session = await stripeService.createCustomerPortalSession(
+            user.stripe_customer_id,
+            `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`
+        );
+
+        res.json({
+            success: true,
+            url: session.url
+        });
+
+    } catch (error) {
+        console.error('Portal session creation failed:', error);
+        res.status(500).json({ error: 'Failed to create portal session', details: error.message });
+    }
+});
+
+// Get subscription status
+app.get('/api/v1/stripe/subscription', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Get user subscription info
+        const user = await db.get(
+            'SELECT subscription_tier, subscription_status, stripe_subscription_id, stripe_customer_id FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Get tier features
+        const features = stripeService.getTierFeatures(user.subscription_tier || 'free');
+
+        // Get usage this month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const usageResult = await db.get(
+            'SELECT COUNT(*) as count FROM questions WHERE user_id = ? AND created_at >= ?',
+            [userId, startOfMonth.toISOString()]
+        );
+
+        const currentUsage = usageResult ? usageResult.count : 0;
+
+        // Check if more requests allowed
+        const usageCheck = stripeService.checkUsageLimit(user, currentUsage);
+
+        res.json({
+            success: true,
+            subscription: {
+                tier: user.subscription_tier || 'free',
+                status: user.subscription_status || 'active',
+                stripeCustomerId: user.stripe_customer_id,
+                stripeSubscriptionId: user.stripe_subscription_id,
+                features: features,
+                usage: {
+                    current: currentUsage,
+                    limit: usageCheck.limit,
+                    remaining: usageCheck.remaining,
+                    allowed: usageCheck.allowed
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Subscription status retrieval failed:', error);
+        res.status(500).json({ error: 'Failed to retrieve subscription status' });
+    }
+});
+
+// Stripe webhook handler
+app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+        const signature = req.headers['stripe-signature'];
+
+        // Handle webhook with callbacks
+        await stripeService.handleWebhook(
+            req.body,
+            signature,
+            {
+                // Subscription created
+                onSubscriptionCreated: async (subscription) => {
+                    console.log('📧 Subscription created:', subscription.id);
+
+                    const userId = subscription.metadata.userId;
+                    const tier = subscription.metadata.tier || 'pro';
+
+                    await db.run(
+                        `UPDATE users
+                         SET subscription_tier = ?,
+                             subscription_status = ?,
+                             stripe_subscription_id = ?,
+                             stripe_customer_id = ?
+                         WHERE id = ?`,
+                        [tier, subscription.status, subscription.id, subscription.customer, userId]
+                    );
+
+                    console.log(`✅ User ${userId} upgraded to ${tier}`);
+                },
+
+                // Subscription updated
+                onSubscriptionUpdated: async (subscription) => {
+                    console.log('🔄 Subscription updated:', subscription.id);
+
+                    const userId = subscription.metadata.userId;
+                    const tier = subscription.metadata.tier || 'pro';
+
+                    await db.run(
+                        `UPDATE users
+                         SET subscription_tier = ?,
+                             subscription_status = ?
+                         WHERE stripe_subscription_id = ?`,
+                        [tier, subscription.status, subscription.id]
+                    );
+
+                    console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`);
+                },
+
+                // Subscription deleted
+                onSubscriptionDeleted: async (subscription) => {
+                    console.log('❌ Subscription deleted:', subscription.id);
+
+                    await db.run(
+                        `UPDATE users
+                         SET subscription_tier = 'free',
+                             subscription_status = 'canceled'
+                         WHERE stripe_subscription_id = ?`,
+                        [subscription.id]
+                    );
+
+                    console.log(`✅ Subscription ${subscription.id} canceled, user downgraded to free`);
+                },
+
+                // Payment succeeded
+                onPaymentSucceeded: async (invoice) => {
+                    console.log('💰 Payment succeeded:', invoice.id);
+                    // Could log payment history, send receipt email, etc.
+                },
+
+                // Payment failed
+                onPaymentFailed: async (invoice) => {
+                    console.log('⚠️ Payment failed:', invoice.id);
+                    // Could send payment failure email, suspend account, etc.
+                },
+
+                // Checkout completed
+                onCheckoutCompleted: async (session) => {
+                    console.log('✅ Checkout completed:', session.id);
+                    const userId = session.metadata.userId;
+
+                    // Update user with customer ID if not already set
+                    await db.run(
+                        `UPDATE users
+                         SET stripe_customer_id = ?
+                         WHERE id = ? AND stripe_customer_id IS NULL`,
+                        [session.customer, userId]
+                    );
+                }
+            }
+        );
+
+        res.json({ received: true });
+
+    } catch (error) {
+        console.error('Webhook handling failed:', error);
+        res.status(400).json({ error: 'Webhook handling failed', details: error.message });
+    }
+});
+
+// ================================================
 // START SERVER
 // ================================================
 
@@ -474,6 +699,10 @@ async function startServer() {
             console.log('   POST /api/v1/auth/login');
             console.log('   POST /api/v1/auth/login-pin');
             console.log('   GET  /api/v1/auth/me');
+            console.log('   POST /api/v1/stripe/create-checkout');
+            console.log('   POST /api/v1/stripe/create-portal');
+            console.log('   GET  /api/v1/stripe/subscription');
+            console.log('   POST /api/v1/stripe/webhook');
             console.log('');
             console.log('🔥 Ready for connections!');
             console.log('');

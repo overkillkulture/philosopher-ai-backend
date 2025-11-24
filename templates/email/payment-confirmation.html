@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation - OVERKORE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content p {
+            margin: 16px 0;
+            font-size: 16px;
+        }
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+        }
+        .receipt {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .receipt-row:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 18px;
+            padding-top: 16px;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .features {
+            background-color: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 24px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 24px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">✓</div>
+            <h1>Payment Successful!</h1>
+        </div>
+
+        <div class="content">
+            <p>Hello {{userName}},</p>
+
+            <p>Thank you for your payment! Your subscription has been confirmed.</p>
+
+            <div class="receipt">
+                <h3 style="margin-top: 0; color: #333;">Payment Receipt</h3>
+
+                <div class="receipt-row">
+                    <span>Plan:</span>
+                    <span><strong>{{planName}}</strong></span>
+                </div>
+
+                <div class="receipt-row">
+                    <span>Amount:</span>
+                    <span>${{amount}}</span>
+                </div>
+
+                <div class="receipt-row">
+                    <span>Billing Cycle:</span>
+                    <span>Monthly</span>
+                </div>
+
+                <div class="receipt-row">
+                    <span>Payment Method:</span>
+                    <span>•••• {{last4}}</span>
+                </div>
+
+                <div class="receipt-row">
+                    <span>Next Billing Date:</span>
+                    <span>{{nextBillingDate}}</span>
+                </div>
+
+                <div class="receipt-row">
+                    <span>Total:</span>
+                    <span><strong>${{amount}}</strong></span>
+                </div>
+            </div>
+
+            <p style="font-size: 14px; color: #666;">Invoice #{{invoiceId}} • {{paymentDate}}</p>
+
+            <div class="features">
+                <h3 style="margin-top: 0; color: #10b981;">🎉 Your {{planName}} Features:</h3>
+
+                <ul style="margin: 8px 0; padding-left: 20px;">
+                    {{#features}}
+                    <li>{{feature}}</li>
+                    {{/features}}
+                </ul>
+            </div>
+
+            <p><strong>What's next?</strong></p>
+            <ul>
+                <li>Your subscription is now active</li>
+                <li>All {{planName}} features are unlocked</li>
+                <li>You'll receive invoices monthly</li>
+            </ul>
+
+            <a href="{{dashboardUrl}}" class="button">Go to Dashboard →</a>
+
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 32px 0;">
+
+            <p style="font-size: 14px; color: #666;">
+                <strong>Manage your subscription:</strong><br>
+                To update your payment method, upgrade/downgrade, or cancel, visit your
+                <a href="{{billingPortalUrl}}" style="color: #667eea;">billing portal</a>.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>🔺 The Consciousness Revolution</p>
+            <p>
+                <a href="{{dashboardUrl}}">Dashboard</a> •
+                <a href="{{billingPortalUrl}}">Billing</a> •
+                <a href="{{supportUrl}}">Support</a>
+            </p>
+            <p style="margin-top: 16px; color: #999; font-size: 12px;">
+                Questions about your invoice? Reply to this email.<br>
+                © 2025 OVERKORE. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

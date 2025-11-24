@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Upgraded - OVERKORE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .features-box {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 24px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 24px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎊 Upgraded to {{planName}}!</h1>
+        </div>
+
+        <div class="content">
+            <p>Hello {{userName}},</p>
+
+            <p>Congratulations! Your subscription has been upgraded to <strong>{{planName}}</strong>.</p>
+
+            <div class="features-box">
+                <h3 style="margin-top: 0; color: #f59e0b;">✨ Your New Features:</h3>
+
+                <ul style="margin: 8px 0; padding-left: 20px;">
+                    <li><strong>Unlimited</strong> questions per month</li>
+                    <li>Full API access</li>
+                    <li>Priority support</li>
+                    <li>Advanced features</li>
+                    {{#extraFeatures}}
+                    <li>{{feature}}</li>
+                    {{/extraFeatures}}
+                </ul>
+            </div>
+
+            <p><strong>Start using your new features right now:</strong></p>
+
+            <a href="{{dashboardUrl}}" class="button">Go to Dashboard →</a>
+
+            <p style="margin-top: 32px; font-size: 14px; color: #666;">
+                Your billing will be updated at the next cycle. You'll be charged ${{newAmount}}/month starting {{nextBillingDate}}.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>🔺 The Consciousness Revolution</p>
+            <p>
+                <a href="{{dashboardUrl}}">Dashboard</a> •
+                <a href="{{billingPortalUrl}}">Billing</a> •
+                <a href="{{supportUrl}}">Support</a>
+            </p>
+            <p style="margin-top: 16px; color: #999; font-size: 12px;">
+                © 2025 OVERKORE. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
