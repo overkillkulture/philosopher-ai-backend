@@ -1,5 +1,11 @@
 # Knowledge Base Git Ignore
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Python
 __pycache__/
 *.py[cod]
@@ -20,6 +26,12 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+consciousness.db
 
 # Large binaries (if any)
 *.exe
