@@ -1,7 +1,38 @@
-node_modules/
-*.db
-.env
+# Knowledge Base Git Ignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# OS
 .DS_Store
-ngrok.exe
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temp files
+*.tmp
+*.temp
 *.log
-.env.backup
+
+# Large binaries (if any)
+*.exe
+*.dll
+
+# Secrets (if we add them later)
+.env
+secrets.json
+api_keys.json
+
+# Editor
+.vscode/
+.idea/
+*.sublime-*
+.trinity/C3_API_KEY.txt
+.trinity/messages/c2_to_c1_api_key_update.json

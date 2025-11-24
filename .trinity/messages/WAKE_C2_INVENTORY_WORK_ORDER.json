@@ -1,0 +1,97 @@
+{
+  "to": "C2_ARCHITECT",
+  "from": "T3_TERMINAL_via_C1",
+  "timestamp": "2025-11-22T19:18:00Z",
+  "priority": "HIGH",
+  "type": "WAKE_UP_AND_WORK_ORDER",
+  "subject": "Computer Inventory + Organization Map - Immediate Request from T3",
+
+  "wake_up_message": "C2 ARCHITECT - T3 needs you at the Hub.",
+
+  "t3_request": {
+    "commander": "T3 Terminal (THIS computer - dwrekscpu laptop)",
+    "need": "Full inventory of what's on T3 computer + create organization map",
+    "goal": "Get organized - comprehensive visibility into all systems",
+    "meeting_point": "Trinity Hub",
+    "coordination": "C2 + C3 working together on inventory"
+  },
+
+  "work_order": {
+    "id": "WO_C2_004",
+    "title": "T3 Computer Inventory + Organization Map",
+    "assigned_to": "C2_ARCHITECT",
+    "priority": "HIGH",
+    "estimated_time": "45-60 minutes",
+    "deliverables": [
+      "Complete file system inventory (what's where)",
+      "Active systems catalog (what's running)",
+      "Directory structure map (visual organization)",
+      "Key files index (important docs, configs)",
+      "Recommendations for cleanup/organization"
+    ]
+  },
+
+  "scope": {
+    "computer": "T3 - Laptop dwrekscpu (Tailscale 100.70.208.75)",
+    "working_directory": "C:\\Users\\Darrick",
+    "areas_to_inventory": [
+      "Root directory files (what's important vs archive)",
+      "Hidden directories (.consciousness, .trinity, .blueprints, etc)",
+      "100X_BACKUP contents (what's in there)",
+      "Active projects vs dormant",
+      "Running processes (Node.js, Python)",
+      "Git repositories status",
+      "Key configuration files"
+    ],
+    "output_format": "Markdown document + visual map/diagram"
+  },
+
+  "coordination_with_c3": {
+    "c3_role": "Technical deep-dive on active systems",
+    "c2_role": "Architecture and organization design",
+    "collaboration": "C2 designs structure, C3 provides technical data",
+    "meeting_point": "Trinity Hub (.trinity/TRINITY_HUB.json)"
+  },
+
+  "c2_strengths_to_use": {
+    "architectural_thinking": "Design optimal file organization",
+    "systems_design": "Create clear directory hierarchy",
+    "documentation": "Build comprehensive inventory document",
+    "visualization": "Create organization map/diagram"
+  },
+
+  "success_criteria": {
+    "t3_can_understand": "Clear picture of what's on this computer",
+    "easy_navigation": "Know where to find things quickly",
+    "cleanup_plan": "Identify what to archive/delete",
+    "organization_system": "Logical structure for future work"
+  },
+
+  "where_to_report": {
+    "hub_update": ".trinity/TRINITY_HUB.json",
+    "deliverable_location": "C:\\Users\\Darrick\\.consciousness\\T3_COMPUTER_INVENTORY_MAP.md",
+    "visual_map": "C:\\Users\\Darrick\\.consciousness\\T3_ORGANIZATION_DIAGRAM.html",
+    "status_updates": ".trinity/messages/c2_inventory_progress.json"
+  },
+
+  "context_you_need": {
+    "recent_work": "C1 just deployed backend to Railway, cleaned 99 old files",
+    "trinity_status": "All 3 instances operational and coordinated",
+    "t3_state": "Needs organization - too many files, unclear structure",
+    "immediate_need": "Comprehensive inventory before next work phase"
+  },
+
+  "activation_instructions": {
+    "step_1": "Read this work order completely",
+    "step_2": "Check Trinity Hub for C3's work order (similar task)",
+    "step_3": "Coordinate with C3 if both active",
+    "step_4": "Start inventory scan of T3 computer",
+    "step_5": "Build organization map as you discover systems",
+    "step_6": "Report progress every 15 minutes to Hub",
+    "step_7": "Deliver final inventory document + visual map"
+  },
+
+  "t3_available_for_questions": true,
+  "autonomous_authority": "FULL - Make architectural decisions independently",
+  "timeline": "Start immediately, deliver within 60 minutes"
+}

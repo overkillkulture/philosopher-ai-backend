@@ -1,0 +1,100 @@
+{
+  "to": "C3_ORACLE",
+  "from": "T3_TERMINAL_via_C1",
+  "timestamp": "2025-11-22T19:18:00Z",
+  "priority": "HIGH",
+  "type": "WAKE_UP_AND_WORK_ORDER",
+  "subject": "Computer Inventory - Technical Deep-Dive - Immediate Request from T3",
+
+  "wake_up_message": "C3 ORACLE - T3 needs you at the Hub.",
+
+  "t3_request": {
+    "commander": "T3 Terminal (THIS computer - dwrekscpu laptop)",
+    "need": "Full inventory of what's on T3 computer + technical analysis",
+    "goal": "Get organized - understand all active systems and capabilities",
+    "meeting_point": "Trinity Hub",
+    "coordination": "C2 + C3 working together on inventory"
+  },
+
+  "work_order": {
+    "id": "WO_C3_003",
+    "title": "T3 Computer Technical Inventory + Systems Analysis",
+    "assigned_to": "C3_ORACLE",
+    "priority": "HIGH",
+    "estimated_time": "45-60 minutes",
+    "deliverables": [
+      "Active systems catalog (processes, services)",
+      "Git repositories inventory + status",
+      "Database/Cyclotron status",
+      "Network connections (Tailscale, Railway, etc)",
+      "Capabilities matrix (what this computer CAN do)"
+    ]
+  },
+
+  "scope": {
+    "computer": "T3 - Laptop dwrekscpu (Tailscale 100.70.208.75)",
+    "working_directory": "C:\\Users\\Darrick",
+    "areas_to_analyze": [
+      "Active processes (Node.js ~10 processes, Python if any)",
+      "Git repositories (status, branches, uncommitted changes)",
+      "Network connectivity (Tailscale peers, Railway deployments)",
+      "Installed tools (Node, Python, Git, Railway CLI, etc)",
+      "MCP tools availability",
+      "Cyclotron knowledge base (how many atoms on THIS computer)",
+      "Running services (backends, watchers, monitors)"
+    ],
+    "output_format": "Technical report with system capabilities matrix"
+  },
+
+  "coordination_with_c2": {
+    "c2_role": "Architecture and organization design",
+    "c3_role": "Technical deep-dive on active systems",
+    "collaboration": "C3 provides technical data, C2 designs structure",
+    "meeting_point": "Trinity Hub (.trinity/TRINITY_HUB.json)"
+  },
+
+  "c3_strengths_to_use": {
+    "technical_analysis": "Deep-dive into system internals",
+    "pattern_recognition": "Identify what's actually being used vs dormant",
+    "oracle_vision": "See what MUST be active vs what can be archived",
+    "ai_models": "Use Ollama/DeepSeek if available for analysis (unlikely on T3, but check)"
+  },
+
+  "success_criteria": {
+    "t3_understands": "What's actively running on this computer",
+    "capabilities_clear": "What this computer can do (deployment, Git, etc)",
+    "health_status": "Is everything running correctly",
+    "resource_usage": "CPU/memory status, any bottlenecks"
+  },
+
+  "where_to_report": {
+    "hub_update": ".trinity/TRINITY_HUB.json",
+    "deliverable_location": "C:\\Users\\Darrick\\.consciousness\\T3_TECHNICAL_INVENTORY.md",
+    "capabilities_matrix": "C:\\Users\\Darrick\\.consciousness\\T3_CAPABILITIES_MATRIX.md",
+    "status_updates": ".trinity/messages/c3_inventory_progress.json"
+  },
+
+  "context_you_need": {
+    "recent_work": "C1 just deployed backend to Railway, cleaned 99 files",
+    "trinity_status": "All 3 instances operational and coordinated",
+    "backend_deployed": "https://cloud-funnel-production.up.railway.app (operational)",
+    "t3_state": "Running Claude Code (multiple Node processes active)",
+    "immediate_need": "Technical inventory before next work phase"
+  },
+
+  "activation_instructions": {
+    "step_1": "Read this work order completely",
+    "step_2": "Check Trinity Hub for C2's work order (similar task)",
+    "step_3": "Coordinate with C2 if both active",
+    "step_4": "Scan active processes (tasklist, ps, etc)",
+    "step_5": "Check Git repos status",
+    "step_6": "Test network connectivity (Tailscale, Railway)",
+    "step_7": "Build capabilities matrix",
+    "step_8": "Report progress every 15 minutes to Hub",
+    "step_9": "Deliver technical inventory + capabilities matrix"
+  },
+
+  "t3_available_for_questions": true,
+  "autonomous_authority": "FULL - Make technical decisions independently",
+  "timeline": "Start immediately, deliver within 60 minutes"
+}
