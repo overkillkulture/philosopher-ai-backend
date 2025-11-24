@@ -16,6 +16,7 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
 const stripeService = require('./services/stripeService');
+const emailService = require('./services/emailService');
 
 // ================================================
 // CONFIGURATION
@@ -226,6 +227,12 @@ app.post('/api/v1/auth/register', async (req, res) => {
 
         // Set cookie for cross-subdomain sessions
         setAuthCookie(res, token);
+
+        // Send welcome email (async, don't wait)
+        emailService.sendWelcomeEmail(email, name || 'there').catch(error => {
+            console.error('Failed to send welcome email:', error);
+            // Don't fail registration if email fails
+        });
 
         res.status(201).json({
             success: true,
@@ -603,6 +610,29 @@ app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), as
                     );
 
                     console.log(`✅ User ${userId} upgraded to ${tier}`);
+
+                    // Send subscription upgraded email
+                    try {
+                        const user = await db.get('SELECT email, name FROM users WHERE id = ?', [userId]);
+                        if (user) {
+                            const nextBillingDate = new Date(subscription.current_period_end * 1000).toLocaleDateString();
+                            const amount = tier === 'pro' ? 29 : 500;
+
+                            await emailService.sendSubscriptionUpgradedEmail(
+                                user.email,
+                                user.name || 'there',
+                                {
+                                    planName: tier === 'pro' ? 'Pro' : 'Enterprise',
+                                    newAmount: amount,
+                                    nextBillingDate: nextBillingDate
+                                }
+                            );
+
+                            console.log(`✅ Subscription upgraded email sent to ${user.email}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to send subscription upgraded email:', error);
+                    }
                 },
 
                 // Subscription updated
@@ -636,12 +666,70 @@ app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), as
                     );
 
                     console.log(`✅ Subscription ${subscription.id} canceled, user downgraded to free`);
+
+                    // Send subscription canceled email
+                    try {
+                        const user = await db.get(
+                            'SELECT email, name FROM users WHERE stripe_subscription_id = ?',
+                            [subscription.id]
+                        );
+
+                        if (user) {
+                            const expirationDate = new Date(subscription.current_period_end * 1000).toLocaleDateString();
+                            const tier = subscription.metadata.tier || 'Pro';
+
+                            await emailService.sendSubscriptionCanceledEmail(
+                                user.email,
+                                user.name || 'there',
+                                {
+                                    planName: tier === 'pro' ? 'Pro' : 'Enterprise',
+                                    expirationDate: expirationDate
+                                }
+                            );
+
+                            console.log(`✅ Subscription canceled email sent to ${user.email}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to send subscription canceled email:', error);
+                    }
                 },
 
                 // Payment succeeded
                 onPaymentSucceeded: async (invoice) => {
                     console.log('💰 Payment succeeded:', invoice.id);
-                    // Could log payment history, send receipt email, etc.
+
+                    // Get user info and send payment confirmation email
+                    try {
+                        const subscriptionId = invoice.subscription;
+                        if (subscriptionId) {
+                            const user = await db.get(
+                                'SELECT id, email, name, subscription_tier FROM users WHERE stripe_subscription_id = ?',
+                                [subscriptionId]
+                            );
+
+                            if (user) {
+                                const nextBillingDate = new Date(invoice.period_end * 1000).toLocaleDateString();
+                                const paymentDate = new Date(invoice.created * 1000).toLocaleDateString();
+
+                                await emailService.sendPaymentConfirmationEmail(
+                                    user.email,
+                                    user.name || 'there',
+                                    {
+                                        planName: user.subscription_tier === 'pro' ? 'Pro' : 'Enterprise',
+                                        amount: (invoice.amount_paid / 100).toFixed(2),
+                                        last4: invoice.charge?.payment_method_details?.card?.last4 || '****',
+                                        nextBillingDate: nextBillingDate,
+                                        invoiceId: invoice.id,
+                                        paymentDate: paymentDate
+                                    }
+                                );
+
+                                console.log(`✅ Payment confirmation email sent to ${user.email}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to send payment confirmation email:', error);
+                    }
                 },
 
                 // Payment failed
