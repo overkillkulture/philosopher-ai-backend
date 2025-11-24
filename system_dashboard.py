@@ -109,7 +109,8 @@ class SystemDashboard:
                 if 'Passed:' in line:
                     try:
                         status['checks_passed'] = int(line.split(':')[-1].strip())
-                    except:
+                    except (ValueError, IndexError) as e:
+                        # Parsing error - skip this line
                         pass
 
         return status
@@ -144,7 +145,8 @@ class SystemDashboard:
                                 if word.lower() == 'loaded' and i + 1 < len(words):
                                     status['indexed_items'] = int(words[i + 1])
                                     break
-                        except:
+                        except (ValueError, IndexError) as e:
+                            # Parsing error - skip this line
                             pass
 
         return status
@@ -172,7 +174,8 @@ class SystemDashboard:
                 if status['total'] > 0:
                     status['pass_rate'] = (status['passed'] / status['total']) * 100
                 status['last_run'] = data.get('timestamp', None)
-            except:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                # Failed to parse test results - skip
                 pass
 
         return status
@@ -204,7 +207,8 @@ class SystemDashboard:
                         if 'throughput' in bench:
                             status['throughput'] = bench['throughput']
                             break
-            except:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                # Failed to parse benchmark results - skip
                 pass
 
         return status
@@ -283,7 +287,8 @@ class SystemDashboard:
                 status['indexed'] = True
                 status['total_docs'] = data.get('total_documents', 0)
                 status['total_words'] = data.get('total_words', 0)
-            except:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                # Failed to parse doc index - skip
                 pass
 
         return status

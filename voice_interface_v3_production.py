@@ -188,8 +188,9 @@ class VoiceInterfaceV3:
                     "modified_date": datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%Y-%m-%d")
                 }
                 self.basic_knowledge.append(item)
-            except:
-                pass
+            except (OSError, PermissionError, ValueError) as e:
+                # Log file access errors but continue processing other files
+                self.logger.warning(f"Could not process file {file_path}: {str(e)}", exc_info=True)
 
         return len(self.basic_knowledge)
 

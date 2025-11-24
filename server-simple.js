@@ -21,7 +21,37 @@ const path = require('path');
 // ================================================
 
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'consciousness_revolution_test_secret_2025';
+
+// CRITICAL SECURITY: JWT_SECRET must be set in environment
+// Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+if (!process.env.JWT_SECRET) {
+    console.error('');
+    console.error('❌ FATAL ERROR: JWT_SECRET environment variable is not set!');
+    console.error('');
+    console.error('For security, JWT_SECRET must be explicitly configured.');
+    console.error('Add JWT_SECRET to your .env file or environment variables.');
+    console.error('');
+    console.error('Generate a secure secret with:');
+    console.error('  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+    console.error('');
+    process.exit(1);
+}
+
+// Validate JWT_SECRET strength
+if (process.env.JWT_SECRET.length < 32) {
+    console.error('');
+    console.error('❌ FATAL ERROR: JWT_SECRET is too weak!');
+    console.error('');
+    console.error(`Current length: ${process.env.JWT_SECRET.length} characters`);
+    console.error('Required: At least 32 characters (64+ recommended)');
+    console.error('');
+    console.error('Generate a secure secret with:');
+    console.error('  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+    console.error('');
+    process.exit(1);
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ================================================
 // INITIALIZE EXPRESS APP

@@ -259,7 +259,8 @@ class BackupSystem:
                         'files': manifest.get('total_files', 0),
                         'size': manifest.get('total_size', 0)
                     })
-                except:
+                except (json.JSONDecodeError, OSError, KeyError) as e:
+                    # Skip corrupted backup manifest
                     pass
 
         return backups
@@ -270,8 +271,9 @@ class BackupSystem:
         if manifest_file.exists():
             try:
                 return json.loads(manifest_file.read_text())
-            except:
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                # Failed to load manifest - corrupted backup
+                return None
         return None
 
     def print_backups(self):
