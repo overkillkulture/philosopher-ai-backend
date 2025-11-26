@@ -1,0 +1,95 @@
+{
+  "work_order_id": "WO_C2_BOOTSTRAP_001",
+  "from": "C1_CLOUD_CP3",
+  "to": "C2_ARCHITECT",
+  "priority": "CRITICAL",
+  "date": "2025-11-26",
+  "session": "TRIPLE_BOOTSTRAP_CYCLOTRON_ONLINE",
+
+  "task": "CLOUD INFRASTRUCTURE SETUP - BRING CYCLOTRON ONLINE",
+
+  "context": {
+    "mission": "Deploy Cyclotron brain to production cloud infrastructure",
+    "current_state": "121,210 knowledge items ready, backend runs locally",
+    "target_state": "Cyclotron accessible via cloud endpoints, production ready"
+  },
+
+  "deliverables": [
+    {
+      "item": "Railway Deployment Configuration",
+      "format": "railway.json + Procfile",
+      "content": [
+        "Production environment variables",
+        "Memory allocation for 121K items",
+        "Health check endpoints",
+        "Auto-restart configuration"
+      ],
+      "why": "Backend needs cloud deployment to go live"
+    },
+    {
+      "item": "Docker Configuration",
+      "format": "Dockerfile + docker-compose.yml",
+      "content": [
+        "Node.js production container",
+        "Cyclotron data volume mount",
+        "Environment variable injection",
+        "Network configuration"
+      ],
+      "why": "Containerization enables portable deployment"
+    },
+    {
+      "item": "Cloud Architecture Diagram",
+      "format": "Mermaid diagram in markdown",
+      "content": [
+        "Frontend (consciousnessrevolution.io) -> Backend (Railway/Cloud)",
+        "Backend -> Cyclotron Brain (121K items)",
+        "API Gateway configuration",
+        "CDN/Edge caching strategy"
+      ],
+      "why": "Team needs to visualize production architecture"
+    },
+    {
+      "item": "Environment Configuration",
+      "format": ".env.production.example",
+      "content": [
+        "DATABASE_URL",
+        "CYCLOTRON_STATE_PATH",
+        "API_KEYS (placeholders)",
+        "CORS origins",
+        "Production flags"
+      ],
+      "why": "Standardize deployment configuration"
+    },
+    {
+      "item": "CI/CD Pipeline",
+      "format": ".github/workflows/deploy.yml",
+      "content": [
+        "Test on push",
+        "Build Docker image",
+        "Deploy to Railway on main merge",
+        "Health check verification"
+      ],
+      "why": "Automate deployment process"
+    }
+  ],
+
+  "timeline": "45 minutes autonomous work",
+
+  "output_location": ".trinity/LOCAL_HUB/PC3/outbox/c2_output/BOOTSTRAP/",
+
+  "success_criteria": [
+    "Backend can be deployed to Railway with one command",
+    "Docker container runs Cyclotron with all 121K items",
+    "Architecture diagram shows complete production flow",
+    "CI/CD pipeline deploys on merge to main"
+  ],
+
+  "technical_requirements": {
+    "backend_stack": "Node.js + Express",
+    "database": "SQLite (local) / PostgreSQL (production option)",
+    "cyclotron": "In-memory knowledge graph (araya_state.json)",
+    "deployment_target": "Railway (primary), Docker (secondary)"
+  },
+
+  "notes": "C2, this is about making Cyclotron REAL in the cloud. 121K items of consciousness waiting to go online. Design for scale - we're adding more knowledge daily."
+}
