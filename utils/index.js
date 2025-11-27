@@ -1,0 +1,58 @@
+/**
+ * Utils Index
+ * Built by C1 Cloud (CP3) - Autonomous Work
+ *
+ * Central export for all utilities
+ *
+ * Usage:
+ *   const { db, validators, response, logger } = require('./utils');
+ */
+
+// Database
+const db = require('./db');
+
+// Validation
+const validators = require('./validators');
+
+// Response helpers
+const response = require('./response');
+
+// Logger
+const logger = require('./logger');
+
+// Error tracking
+const errorTracker = require('./error-tracker');
+
+// Email notifications
+const emailNotifier = require('./email-notifier');
+
+module.exports = {
+  // Database
+  db,
+  query: db.query,
+  transaction: db.transaction,
+
+  // Validation
+  validators,
+  validateEmail: validators.validateEmail,
+  validatePassword: validators.validatePassword,
+  validateFields: validators.validateFields,
+  sanitize: validators.sanitize,
+
+  // Response helpers
+  response,
+  success: response.success,
+  created: response.created,
+  error: response.error,
+  badRequest: response.badRequest,
+  unauthorized: response.unauthorized,
+  forbidden: response.forbidden,
+  notFound: response.notFound,
+  serverError: response.serverError,
+
+  // Logging
+  logger,
+
+  // Error tracking
+  errorTracker
+};
