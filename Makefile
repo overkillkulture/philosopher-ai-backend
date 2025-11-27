@@ -26,6 +26,8 @@ help:
 	@echo "  make backup     - Backup database"
 	@echo "  make status     - Check system status"
 	@echo "  make test-api   - Test API endpoints"
+	@echo "  make validate-env - Validate environment"
+	@echo "  make db-seed    - Seed test data"
 	@echo "  make clean      - Clean temp files"
 	@echo ""
 	@echo "════════════════════════════════════════"
@@ -94,3 +96,10 @@ db-migrate:
 
 db-reset:
 	npm run db:reset
+
+db-seed:
+	node scripts/seed-db.js
+
+# Validation
+validate-env:
+	node scripts/validate-env.js
