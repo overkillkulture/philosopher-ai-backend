@@ -37,3 +37,6 @@ api_keys.json
 .trinity/C3_API_KEY.txt
 .trinity/messages/c2_to_c1_api_key_update.json
 logs/
+backups/
+node_modules/
+package-lock.json
