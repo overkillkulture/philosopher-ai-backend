@@ -316,39 +316,295 @@ function syncCycle() {
     }
 }
 
-// Health check endpoint
+// Parse JSON body from request
+function parseBody(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            try {
+                resolve(body ? JSON.parse(body) : {});
+            } catch (err) {
+                reject(new Error('Invalid JSON'));
+            }
+        });
+        req.on('error', reject);
+    });
+}
+
+// Send JSON response
+function sendJson(res, statusCode, data) {
+    res.writeHead(statusCode, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    });
+    res.end(JSON.stringify(data));
+}
+
+// Get messages for an instance
+function getMessages(instance) {
+    const inboxFile = path.join(CONFIG.localTrinity, 'MESSAGES', `${instance.toLowerCase()}_inbox.json`);
+    if (fs.existsSync(inboxFile)) {
+        try {
+            return JSON.parse(fs.readFileSync(inboxFile, 'utf8'));
+        } catch (err) {
+            return [];
+        }
+    }
+    return [];
+}
+
+// Send a message to another computer
+function sendMessage(message) {
+    const outboundFile = path.join(CONFIG.localTrinity, 'MESSAGES', 'outbound_queue.json');
+    let queue = [];
+    if (fs.existsSync(outboundFile)) {
+        try {
+            queue = JSON.parse(fs.readFileSync(outboundFile, 'utf8'));
+        } catch (err) {
+            queue = [];
+        }
+    }
+
+    const newMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...message,
+        createdAt: Date.now(),
+        status: 'queued'
+    };
+
+    queue.push(newMessage);
+    fs.writeFileSync(outboundFile, JSON.stringify(queue, null, 2));
+
+    return newMessage;
+}
+
+// API Server with full Trinity endpoints
 function createHealthServer() {
-    const server = http.createServer((req, res) => {
-        if (req.url === '/health' || req.url === '/api/health') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                status: 'healthy',
-                computer: CONFIG.computerId,
-                role: CONFIG.role,
-                syncCount: state.syncCount,
-                lastSync: state.lastSync,
-                connectedComputers: state.connectedComputers,
-                uptime: process.uptime()
-            }));
-        } else if (req.url === '/api/trinity/status') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                trinity: 'C1 x C2 x C3 = Infinity',
-                computers: {
-                    A: state.connectedComputers.A ? 'online' : 'offline',
-                    B: state.connectedComputers.B ? 'online' : 'offline',
-                    C: 'online (this instance)'
-                },
-                state: state
-            }));
-        } else {
-            res.writeHead(404);
-            res.end('Not found');
+    const server = http.createServer(async (req, res) => {
+        const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
+        const pathname = url.pathname;
+        const method = req.method;
+
+        // Handle CORS preflight
+        if (method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            });
+            res.end();
+            return;
+        }
+
+        try {
+            // Health endpoints
+            if (pathname === '/health' || pathname === '/api/health') {
+                sendJson(res, 200, {
+                    status: 'healthy',
+                    computer: CONFIG.computerId,
+                    role: CONFIG.role,
+                    syncCount: state.syncCount,
+                    lastSync: state.lastSync,
+                    connectedComputers: state.connectedComputers,
+                    uptime: process.uptime()
+                });
+            }
+            // Trinity status
+            else if (pathname === '/api/trinity/status') {
+                sendJson(res, 200, {
+                    trinity: 'C1 x C2 x C3 = Infinity',
+                    computers: {
+                        A: state.connectedComputers.A ? 'online' : 'offline',
+                        B: state.connectedComputers.B ? 'online' : 'offline',
+                        C: 'online (this instance)'
+                    },
+                    state: state
+                });
+            }
+            // Messages API
+            else if (pathname === '/api/trinity/messages') {
+                if (method === 'GET') {
+                    // Get messages - optional ?instance=c1|c2|c3
+                    const instance = url.searchParams.get('instance') || 'c3';
+                    const messages = getMessages(instance);
+                    sendJson(res, 200, {
+                        success: true,
+                        instance: instance,
+                        count: messages.length,
+                        messages: messages
+                    });
+                }
+                else if (method === 'POST') {
+                    // Send a new message
+                    const body = await parseBody(req);
+
+                    if (!body.to || !body.content) {
+                        sendJson(res, 400, {
+                            success: false,
+                            error: 'Missing required fields: to, content'
+                        });
+                        return;
+                    }
+
+                    const message = sendMessage({
+                        from: body.from || `C${CONFIG.computerId}`,
+                        to: body.to,
+                        targetComputer: body.targetComputer || 'A',
+                        content: body.content,
+                        priority: body.priority || 'NORMAL',
+                        type: body.type || 'message'
+                    });
+
+                    log('info', 'Message queued via API', { to: body.to, targetComputer: body.targetComputer });
+
+                    sendJson(res, 201, {
+                        success: true,
+                        message: 'Message queued for delivery',
+                        data: message
+                    });
+                }
+                else if (method === 'DELETE') {
+                    // Clear messages for an instance
+                    const instance = url.searchParams.get('instance') || 'c3';
+                    const inboxFile = path.join(CONFIG.localTrinity, 'MESSAGES', `${instance.toLowerCase()}_inbox.json`);
+                    fs.writeFileSync(inboxFile, JSON.stringify([], null, 2));
+
+                    sendJson(res, 200, {
+                        success: true,
+                        message: `Cleared messages for ${instance}`
+                    });
+                }
+                else {
+                    sendJson(res, 405, { error: 'Method not allowed' });
+                }
+            }
+            // Sync API
+            else if (pathname === '/api/trinity/sync') {
+                if (method === 'GET') {
+                    // Get sync status
+                    sendJson(res, 200, {
+                        success: true,
+                        syncCount: state.syncCount,
+                        lastSync: state.lastSync,
+                        nextSync: state.lastSync
+                            ? new Date(new Date(state.lastSync).getTime() + CONFIG.syncInterval).toISOString()
+                            : null,
+                        interval: CONFIG.syncInterval,
+                        connectedComputers: state.connectedComputers,
+                        messagesProcessed: state.messagesProcessed
+                    });
+                }
+                else if (method === 'POST') {
+                    // Trigger immediate sync
+                    log('info', 'Manual sync triggered via API');
+                    syncCycle();
+
+                    sendJson(res, 200, {
+                        success: true,
+                        message: 'Sync cycle completed',
+                        syncCount: state.syncCount,
+                        lastSync: state.lastSync,
+                        connectedComputers: state.connectedComputers
+                    });
+                }
+                else {
+                    sendJson(res, 405, { error: 'Method not allowed' });
+                }
+            }
+            // Wake request API
+            else if (pathname === '/api/trinity/wake') {
+                if (method === 'POST') {
+                    const body = await parseBody(req);
+
+                    if (!body.targetComputer || !body.instance) {
+                        sendJson(res, 400, {
+                            success: false,
+                            error: 'Missing required fields: targetComputer, instance'
+                        });
+                        return;
+                    }
+
+                    // Queue wake request for target computer
+                    const wakeFile = path.join(
+                        CONFIG.cloudFolder,
+                        `COMPUTER_${body.targetComputer}`,
+                        'wake_requests.json'
+                    );
+
+                    let wakeRequests = [];
+                    if (fs.existsSync(wakeFile)) {
+                        try {
+                            wakeRequests = JSON.parse(fs.readFileSync(wakeFile, 'utf8'));
+                        } catch (err) {
+                            wakeRequests = [];
+                        }
+                    }
+
+                    wakeRequests.push({
+                        from: CONFIG.computerId,
+                        instance: body.instance,
+                        reason: body.reason || 'API wake request',
+                        priority: body.priority || 'MEDIUM',
+                        timestamp: Date.now()
+                    });
+
+                    fs.writeFileSync(wakeFile, JSON.stringify(wakeRequests, null, 2));
+
+                    log('info', 'Wake request sent via API', {
+                        targetComputer: body.targetComputer,
+                        instance: body.instance
+                    });
+
+                    sendJson(res, 201, {
+                        success: true,
+                        message: `Wake request sent to Computer ${body.targetComputer} for ${body.instance}`
+                    });
+                }
+                else {
+                    sendJson(res, 405, { error: 'Method not allowed' });
+                }
+            }
+            // Hub status
+            else if (pathname === '/api/trinity/hub') {
+                const hubFile = path.join(CONFIG.localTrinity, '..', 'TRINITY_HUB.md');
+                let hubContent = null;
+                if (fs.existsSync(hubFile)) {
+                    hubContent = fs.readFileSync(hubFile, 'utf8');
+                }
+
+                sendJson(res, 200, {
+                    success: true,
+                    hubExists: !!hubContent,
+                    hubPath: hubFile,
+                    hubPreview: hubContent ? hubContent.substring(0, 500) + '...' : null
+                });
+            }
+            // 404 for unknown routes
+            else {
+                sendJson(res, 404, { error: 'Not found', availableEndpoints: [
+                    'GET  /health',
+                    'GET  /api/health',
+                    'GET  /api/trinity/status',
+                    'GET  /api/trinity/messages?instance=c1|c2|c3',
+                    'POST /api/trinity/messages',
+                    'DELETE /api/trinity/messages?instance=c1|c2|c3',
+                    'GET  /api/trinity/sync',
+                    'POST /api/trinity/sync',
+                    'POST /api/trinity/wake',
+                    'GET  /api/trinity/hub'
+                ]});
+            }
+        } catch (err) {
+            log('error', 'API error', { error: err.message, url: pathname });
+            sendJson(res, 500, { error: 'Internal server error', message: err.message });
         }
     });
 
     server.listen(CONFIG.port, () => {
-        log('info', `Health server listening on port ${CONFIG.port}`);
+        log('info', `Trinity API server listening on port ${CONFIG.port}`);
     });
 
     return server;

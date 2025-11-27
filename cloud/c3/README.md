@@ -111,11 +111,61 @@ Environment variables for:
 
 ## API Endpoints
 
+### Health
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Health check for load balancers |
-| `/api/health` | GET | Detailed health information |
+| `/health` | GET | Basic health check for load balancers |
+| `/api/health` | GET | Detailed health with sync stats |
+
+### Trinity Status
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/api/trinity/status` | GET | Full Trinity network status |
+| `/api/trinity/hub` | GET | Trinity Hub preview |
+
+### Messages
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trinity/messages` | GET | Get messages (query: `?instance=c1\|c2\|c3`) |
+| `/api/trinity/messages` | POST | Send message to another computer |
+| `/api/trinity/messages` | DELETE | Clear messages for instance |
+
+**POST /api/trinity/messages Body:**
+```json
+{
+  "to": "c1",
+  "targetComputer": "A",
+  "content": "Your message here",
+  "priority": "NORMAL",
+  "type": "message"
+}
+```
+
+### Sync
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trinity/sync` | GET | Get sync status and next sync time |
+| `/api/trinity/sync` | POST | Trigger immediate sync cycle |
+
+### Wake Requests
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trinity/wake` | POST | Send wake request to another computer |
+
+**POST /api/trinity/wake Body:**
+```json
+{
+  "targetComputer": "A",
+  "instance": "c1",
+  "reason": "Task assignment",
+  "priority": "HIGH"
+}
+```
 
 ## Deployment
 
