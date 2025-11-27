@@ -152,7 +152,8 @@ class StrategicAdvisor:
         # Check for risk indicators
         for pattern in self.risk_patterns:
             if re.search(pattern, decision):
-                risks.append(f"Contains risk indicator: {pattern.replace(r'\b', '').replace('(', '').replace(')', '')}")
+                clean_pattern = pattern.replace(r'\b', '').replace('(', '').replace(')', '')
+                risks.append(f"Contains risk indicator: {clean_pattern}")
 
         # Check for lack of testing
         if not re.search(r'\b(test|validated|proven)\b', decision):
