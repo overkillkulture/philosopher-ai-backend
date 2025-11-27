@@ -1,8 +1,13 @@
 name: 🟣 Operation Purple - Notify via GitHub
 
+# DISABLED: Cross-repo permissions issue - GITHUB_TOKEN can't create issues in operation-purple-security
+# Re-enable when PAT secret is added
+# on:
+#   push:
+#     branches: [main, master]
+
 on:
-  push:
-    branches: [main, master]
+  workflow_dispatch:  # Manual trigger only for now
 
 jobs:
   notify:
