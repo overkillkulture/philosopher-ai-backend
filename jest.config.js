@@ -16,7 +16,9 @@ module.exports = {
     '!coverage/**',
     '!jest.config.js',
     '!**/*.test.js',
-    '!**/*.spec.js'
+    '!**/*.spec.js',
+    '!DORMANT_SYSTEMS/**',
+    '!backups/**'
   ],
 
   // Coverage thresholds (professional standards)
