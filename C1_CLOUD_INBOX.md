@@ -32,13 +32,17 @@
 
 ---
 
-## WHAT C1 CLOUD HAS BUILT
+## WHAT C1 CLOUD HAS BUILT (Updated)
 
 1. ✅ Dockerfile (production Node.js 20 Alpine)
 2. ✅ docker-compose.yml (local dev with PostgreSQL)
 3. ✅ .dockerignore (clean builds)
 4. ✅ Disabled failing notify-d workflow
 5. ✅ Work orders in `.trinity/LOCAL_HUB/PC3/inbox/BOOTSTRAP_WORK_ORDERS/`
+6. ✅ DEPLOY_CHECKLIST.md (3 deployment options)
+7. ✅ ecosystem.config.js (PM2 production config)
+8. ✅ Procfile (Railway/Heroku)
+9. ✅ scripts/check-status.js (quick diagnostic tool)
 
 ---
 
