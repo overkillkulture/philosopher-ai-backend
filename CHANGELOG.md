@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ALERT_EMAIL environment variable for configuring health alert recipients
 - Rate limiting stubs for server-sqlite.js security modules
 - Created database/db.js module for knowledge routes database connection
+- Expanded .env.example with DATABASE_URL, ANTHROPIC_API_KEY, STRIPE keys
 
 ### 🔧 Changed
 - Updated axios to 1.13.2
