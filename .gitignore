@@ -45,3 +45,6 @@ logs/
 # Backups (keep directory, ignore backup files)
 backups/*.sql
 backups/*.sql.gz
+
+# Test coverage
+coverage/
