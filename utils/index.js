@@ -26,6 +26,9 @@ const errorTracker = require('./error-tracker');
 // Email notifications
 const emailNotifier = require('./email-notifier');
 
+// Cache
+const cache = require('./cache');
+
 module.exports = {
   // Database
   db,
@@ -54,5 +57,9 @@ module.exports = {
   logger,
 
   // Error tracking
-  errorTracker
+  errorTracker,
+
+  // Cache
+  cache,
+  cacheMiddleware: cache.cacheMiddleware
 };
