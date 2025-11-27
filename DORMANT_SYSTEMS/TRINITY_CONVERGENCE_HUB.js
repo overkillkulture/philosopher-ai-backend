@@ -454,11 +454,11 @@ EXAMPLES:
       break;
 
     case 'status':
-      const status = hub.getStatus();
+      const hubStatus = hub.getStatus();
       console.log('\n' + '='.repeat(60));
       console.log('TRINITY CONVERGENCE HUB STATUS');
       console.log('='.repeat(60) + '\n');
-      console.log(JSON.stringify(status, null, 2));
+      console.log(JSON.stringify(hubStatus, null, 2));
       console.log('\n');
       break;
 
