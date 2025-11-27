@@ -19,41 +19,26 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
 
-// 🛡️ PHASE 2: Rate limiting middleware (October 17, 2025)
-const {
-    authLimiter,
-    passwordResetLimiter,
-    apiLimiter,
-    globalLimiter
-} = require('../rate-limit-middleware');
+// 🛡️ PHASE 2: Rate limiting middleware (built-in)
+const rateLimit = require('express-rate-limit');
 
-// 🛡️ PHASE 3: Input validation middleware (October 17, 2025)
-const {
-    validateRegistration,
-    validateLogin,
-    validateQuestion,
-    handleValidationErrors,
-    sanitizeAllInputs
-} = require('../input-validation-middleware');
+// Create rate limiters using express-rate-limit
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limit each IP to 1000 requests per windowMs
+    message: { error: 'Too many requests, please try again later' }
+});
 
-// 🛡️ PHASE 5: Harmonic Security Guardian (October 17, 2025)
-const {
-    initializeHarmonicSecurity,
-    HarmonicSecurityGuard
-} = require('../harmonic-security-guardian');
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many auth attempts, please try again later' }
+});
 
-// 🛡️ PHASE 6: Enemy Baiting System (October 17, 2025)
-const {
-    initializeEnemyBaiting,
-    BaitDeployer,
-    IntelligenceGathering
-} = require('../enemy-baiting-system');
-
-// 🪞 PHASE 7: Mirror Protocol (October 17, 2025)
-const {
-    initializeMirrorProtocol,
-    MirrorProtocol
-} = require('../mirror-protocol-system');
+// 🛡️ Security modules - stubbed for now (TODO: implement)
+const initializeHarmonicSecurity = (app) => ({ realityField: {}, guards: [] });
+const initializeEnemyBaiting = (app) => ({ baitDeployer: { getBaitStats: () => ({}) }, misdirection: {}, intelligence: { getIntelligenceReport: () => ({}) } });
+const initializeMirrorProtocol = (app) => ({});
 
 // ================================================
 // CONFIGURATION
